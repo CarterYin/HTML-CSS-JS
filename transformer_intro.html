@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式解析Transformer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Corrected KaTeX CSS link - changed xintegrity to integrity -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" xintegrity="sha384-GvrOXuhVAfU5gpv6zlNDzggP5FTmGx7bu9rbQkLpQ6Gm4JLlTXtMhPFaH8TFFHO/H" crossorigin="anonymous">
+    <!-- Corrected KaTeX JS and auto-render JS links - added defer and removed onload -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" xintegrity="sha384-6Wg6YlAGz3IKN9mJ3rT/qFk6W5jRjR327U7KjJ8uPz+P3S+E9oN3K9W5U9I8lqF" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" xintegrity="sha384-ffiJwgytCg7aPiz/T1Fugz+S7gN3fWvM/k0O5C/n6K/H2W8R9sE5t1f+Jp5d7F6" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8f7f2;
+            color: #3d405b;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-link {
+            transition: color 0.3s, border-bottom-color 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #81b29a;
+            border-bottom-color: #81b29a;
+        }
+        .card {
+            background-color: #ffffff;
+            border-left: 5px solid #81b29a;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .interactive-word {
+            cursor: pointer;
+            transition: background-color 0.3s;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        .interactive-word.active, .interactive-word:hover {
+            background-color: #81b29a;
+            color: white;
+        }
+        .attention-bar-container {
+            height: 20px;
+            background-color: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .attention-bar {
+            height: 100%;
+            background-color: #e07a5f;
+            transition: width 0.3s;
+            border-radius: 10px;
+        }
+        .processing-box {
+            transition: transform 1.5s ease-in-out, opacity 1s ease-in-out;
+        }
+        .architecture-block {
+            cursor: pointer;
+            border: 2px solid #d1d5db;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .architecture-block:hover, .architecture-block.active {
+            background-color: #eaf4f0;
+            border-color: #81b29a;
+        }
+        .tab-button {
+            transition: all 0.3s;
+        }
+        .tab-button.active {
+            background-color: #81b29a;
+            color: white;
+        }
+        /* Tooltip styles for word vectors */
+        .word-vector-point {
+            width: 12px;
+            height: 12px;
+            background-color: #81b29a;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 5px rgba(129, 178, 154, 0.6);
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: white;
+            font-weight: bold;
+            /* New: Make this a positioning context for the tooltip text */
+            cursor: pointer; /* Ensure it looks clickable */
+        }
+        .word-vector-point:hover {
+            background-color: #e07a5f;
+        }
+
+        .word-vector-point .tooltiptext {
+            visibility: hidden;
+            width: auto;
+            background-color: #3d405b;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 8px;
+            position: absolute; /* Positioned relative to .word-vector-point */
+            z-index: 10; /* Ensure it's above other content in its context */
+            bottom: 100%; /* Position right above the emoji */
+            left: 50%;
+            transform: translateX(-50%) translateY(-5px); /* Adjust vertical slightly */
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        .word-vector-point .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%; /* At the bottom of the tooltip */
+            left: 50%;
+            margin-left: -5px; /* Half of arrow width */
+            border-width: 5px;
+            border-style: solid;
+            border-color: #3d405b transparent transparent transparent;
+        }
+
+        /* Show tooltip on hover over the parent (.word-vector-point) */
+        .word-vector-point:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl font-bold text-[#3d405b]">探索Transformer</h1>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#history" class="nav-link">历史背景</a>
+                    <a href="#problem" class="nav-link">缘起</a>
+                    <a href="#core-idea" class="nav-link">核心思想</a>
+                    <a href="#blueprint" class="nav-link">架构蓝图</a>
+                    <a href="#algorithm-analysis" class="nav-link">算法分析</a>
+                    <a href="#family" class="nav-link">模型家族</a>
+                    <a href="#future" class="nav-link">未来展望</a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-button" class="text-gray-700 focus:outline-none">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="mobile-menu" class="hidden md:hidden mt-4">
+                <a href="#history" class="block py-2 px-4 text-sm nav-link">历史背景</a>
+                <a href="#problem" class="block py-2 px-4 text-sm nav-link">缘起</a>
+                <a href="#core-idea" class="block py-2 px-4 text-sm nav-link">核心思想</a>
+                <a href="#blueprint" class="block py-2 px-4 text-sm nav-link">架构蓝图</a>
+                <a href="#algorithm-analysis" class="block py-2 px-4 text-sm nav-link">算法分析</a>
+                <a href="#family" class="block py-2 px-4 text-sm nav-link">模型家族</a>
+                <a href="#future" class="block py-2 px-4 text-sm nav-link">未来展望</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-12">
+        <section id="intro" class="text-center mb-24">
+            <h2 class="text-4xl md:text-6xl font-bold mb-4 leading-tight">深度解析Transformer</h2>
+            <p class="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">一场颠覆AI领域的技术革命。本应用将带您一步步揭开它神秘的面纱，理解其背后的核心思想与强大能力。</p>
+        </section>
+
+        <section id="history" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">历史背景：AI与语言的演进</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">在Transformer诞生之前，人工智能在理解和处理语言方面经历了漫长的探索。这一章节将回顾那些为Transformer铺平道路的关键概念和技术。</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-12 items-start">
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">词向量：语言数字化的基石</h4>
+                    <p class="text-gray-600 mb-6">计算机无法直接理解文字。<strong>词向量（Word Embeddings）</strong>是一种巧妙的解决方案，它将每个词语转化为一个多维度的数字表示。神奇的是，意思越接近的词，在这些数字空间中也“距离越近”。这使得计算机能够理解词语的含义及其相互关系。</p>
+                    <p class="text-gray-600 mb-6">早期的词向量模型，如<strong>Word2Vec</strong>和<strong>GloVe</strong>，都通过不同的方法学习词语的固定表示。Word2Vec通过预测上下文来学习，而GloVe则基于词语共现统计。它们都能够捕捉词语之间的语义关系，甚至进行有趣的类比运算，例如著名的“国王 - 男人 + 女人 = 女王”。</p>
+                    <p class="text-gray-600 mb-6">然而，这些固定嵌入的一个主要限制是它们无法区分多义词（如“银行”既可以是金融机构也可以是河岸）在不同上下文中的含义。这促使了后续<strong>上下文敏感嵌入</strong>的出现，为Transformer的精细理解能力奠定了基础。</p>
+                    <div class="relative w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <!-- Updated word-vector-point with tooltip span -->
+                        <div class="word-vector-point" style="left: 20%; top: 30%;">👑<span class="tooltiptext">国王</span></div>
+                        <div class="word-vector-point" style="left: 40%; top: 20%;">👨<span class="tooltiptext">男人</span></div>
+                        <div class="word-vector-point" style="left: 70%; top: 30%;">👩<span class="tooltiptext">女人</span></div>
+                        <div class="word-vector-point" style="left: 50%; top: 60%;">👸<span class="tooltiptext">女王</span></div>
+                        <div class="word-vector-point" style="left: 25%; top: 75%;">🍎<span class="tooltiptext">苹果</span></div>
+                        <div class="word-vector-point" style="left: 60%; top: 85%;">🍌<span class="tooltiptext">香蕉</span></div>
+                        <div class="word-vector-point" style="left: 80%; top: 70%;">🍊<span class="tooltiptext">橙子</span></div>
+                        <div class="absolute text-xs text-gray-500 bottom-2">（语义空间示意：相似词聚类）</div>
+                    </div>
+                     <p class="mt-4 text-sm text-gray-500">将鼠标悬停在点上，了解词向量如何表示词语。</p>
+                </div>
+
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">注意力机制的萌芽：RNN的“聚光灯”</h4>
+                    <p class="text-gray-600 mb-6">在Transformer之前，<strong>注意力机制（Attention Mechanism）</strong>的概念已经在循环神经网络（RNN）中初露锋芒。它解决了RNN在处理长句子时容易“遗忘”前面信息的问题，让模型能够像打“聚光灯”一样，动态地聚焦到输入序列中最相关的部分，从而提升了机器翻译等任务的性能。</p>
+                    <p class="text-gray-600 mb-6">Attention的出现，标志着模型不再“一叶障目”，而是能够在处理特定词语时，回顾并加权输入序列中的所有相关信息。这为Transformer完全依赖Attention机制奠定了思想基础。</p>
+                    <div class="flex flex-col items-center justify-center p-4 bg-gray-100 rounded-lg h-48">
+                        <div class="flex items-center space-x-2 mb-4">
+                            <div class="w-16 h-8 bg-[#e07a5f] rounded">输入词1</div>
+                            <div class="w-16 h-8 bg-[#e07a5f] rounded">输入词2</div>
+                            <div class="w-16 h-8 bg-[#e07a5f] rounded">...</div>
+                        </div>
+                        <div class="text-xl font-bold mb-4">👇</div>
+                        <div class="flex items-center space-x-2">
+                             <div class="w-24 h-12 bg-[#81b29a] rounded flex items-center justify-center text-white">RNN + Attention</div>
+                             <div class="text-lg text-gray-600">→ 生成词 (聚焦相关输入)</div>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-sm text-gray-500">注意力机制让模型在生成输出时，能“回看”并关注输入中的重要部分。</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="problem" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">缘起：为何需要Transformer？</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">在Transformer诞生之前，自然语言处理（NLP）领域主要依赖循环神经网络（RNN）。然而，RNN存在两个致命瓶颈：处理速度慢和难以捕捉长距离依赖关系，这极大地限制了AI理解复杂语言的能力。</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">瓶颈一：顺序处理的效率困境</h4>
+                    <p class="text-gray-600 mb-6">RNN必须像人读书一样，一个词一个词地顺序处理。这种设计无法利用现代GPU强大的并行计算能力，导致模型训练极其缓慢。这种固有的顺序性，从根本上阻止了计算的并行化，使得模型在处理长序列或大型数据集时效率低下，难以充分利用现代硬件的计算潜力。</p>
+                    <div class="flex items-center justify-around p-4 bg-gray-100 rounded-lg h-48 relative overflow-hidden">
+                        <div class="text-center">
+                            <span class="font-bold">RNN (顺序)</span>
+                            <div id="rnn-animation" class="flex space-x-2 mt-2">
+                                <div class="w-10 h-10 bg-[#e07a5f] rounded processing-box"></div>
+                                <div class="w-10 h-10 bg-[#e07a5f] rounded processing-box"></div>
+                                <div class="w-10 h-10 bg-[#e07a5f] rounded processing-box"></div>
+                                <div class="w-10 h-10 bg-[#e07a5f] rounded processing-box"></div>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <span class="font-bold">Transformer (并行)</span>
+                             <div id="transformer-animation" class="flex space-x-2 mt-2">
+                                <div class="w-10 h-10 bg-[#81b29a] rounded processing-box"></div>
+                                <div class="w-10 h-10 bg-[#81b29a] rounded processing-box"></div>
+                                <div class="w-10 h-10 bg-[#81b29a] rounded processing-box"></div>
+                                <div class="w-10 h-10 bg-[#81b29a] rounded processing-box"></div>
+                            </div>
+                        </div>
+                    </div>
+                     <button id="play-animation-btn" class="mt-6 w-full bg-[#3d405b] text-white py-2 rounded-lg hover:bg-opacity-90 transition">▶️ 播放动画对比</button>
+                </div>
+
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">瓶颈二：长距离依赖的遗忘问题</h4>
+                    <p class="text-gray-600 mb-6">当句子很长时，RNN很难记住开头的信息，导致理解能力下降。这是由于其顺序处理导致的信息累积性退化：上下文信息作为一个单一的隐藏状态从一个时间步传递到下一个时间步，任何噪声或衰减都会随着序列长度的增加而累积，最终导致<strong>梯度消失</strong>问题。</p>
+                    <p class="text-gray-600 mb-6">尽管LSTM和GRU等RNN变体通过引入“门”结构来缓解这一问题，但它们并未改变顺序处理的本质，在处理极长距离依赖时依然面临挑战。Transformer通过“注意力机制”完美解决了这个问题。</p>
+                    <div class="chart-container">
+                        <canvas id="dependencyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="core-idea" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">核心思想：注意力机制的魔力</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">Transformer的力量源泉是“自注意力机制”。它允许模型在处理每个词时，都能“关注”到句子中所有其他词，并动态计算它们之间的相关性权重，从而构建出对全局上下文的深刻理解。这种机制使得模型能够“关注”特定的词语，无论它们在序列中相距多远，实现了对信息更灵活和强大的自适应优先处理。</p>
+                 <p class="mt-2 text-sm text-gray-500">👇 <strong>试着点击下方句子中的任意一个词</strong>，观察它对其他词的“注意力”分布。</p>
+            </div>
+            <div class="card p-8 rounded-lg">
+                <div id="attention-sentence" class="text-2xl font-medium mb-8 text-center leading-loose">
+                    <span class="interactive-word" data-word-id="0">AI</span>
+                    <span class="interactive-word" data-word-id="1">的</span>
+                    <span class="interactive-word" data-word-id="2">发展</span>
+                    <span class="interactive-word" data-word-id="3">正在</span>
+                    <span class="interactive-word" data-word-id="4">重塑</span>
+                    <span class="interactive-word" data-word-id="5">我们</span>
+                    <span class="interactive-word" data-word-id="6">的</span>
+                    <span class="interactive-word" data-word-id="7">世界</span>
+                    <span class="interactive-word" data-word-id="8">，</span>
+                    <span class="interactive-word" data-word-id="9">它</span>
+                    <span class="interactive-word" data-word-id="10">的</span>
+                    <span class="interactive-word" data-word-id="11">潜力</span>
+                    <span class="interactive-word" data-word-id="12">是</span>
+                    <span class="interactive-word" data-word-id="13">巨大</span>
+                    <span class="interactive-word" data-word-id="14">的</span>
+                    <span class="interactive-word" data-word-id="15">。</span>
+                </div>
+                <div id="attention-visualization" class="space-y-3 mb-8">
+                </div>
+                <p class="text-gray-600 mb-4">自注意力机制中的“自”字至关重要。它意味着一个词能够理解它自己<em>与同一句子中所有其他词的关系</em>。这与RNNs中顺序构建上下文的方式不同。在自注意力机制中，上下文是<em>全局且同时</em>构建的。查询（Query）、键（Key）和值（Value）机制本质上是一个复杂的查找系统，其中每个词“询问”（Query）其他词“拥有”（Key）什么相关信息，然后“接收”（Value）加权信息。这种动态加权允许模型进行细致的上下文理解，通过直接连接任意两个词（无论距离多远）来解决长距离依赖问题。</p>
+
+
+                <div class="mt-8">
+                    <h4 class="font-bold text-xl mb-4">多头注意力：多角度理解信息</h4>
+                    <p class="text-gray-600 mb-4">自注意力机制已经很强大，但<strong>多头注意力（Multi-Head Attention）</strong>使其更进一步。它就像同时雇佣了多个不同的“专家”（即“头”），每个专家都用自己独特的方式去“关注”和理解句子中的信息。例如，一个头可能专注于捕捉词语之间的语法关系，另一个可能专注于语义关系，还有一个可能专注于指代消解。通过结合这些“专家”的见解，模型能够对输入获得更丰富、更全面的理解。这种集成方法使得模型更加健壮，并能够捕捉复杂、多方面的依赖关系。</p>
+                    <div class="flex items-center justify-center p-4 bg-gray-100 rounded-lg h-24">
+                        <div class="flex space-x-2">
+                            <span class="p-2 border rounded-md">头1 (语法)</span>
+                            <span class="p-2 border rounded-md">头2 (语义)</span>
+                            <span class="p-2 border rounded-md">...</span>
+                            <span class="p-2 border rounded-md">头N (指代)</span>
+                        </div>
+                        <span class="ml-4 text-xl font-bold">→</span>
+                        <span class="ml-4 font-bold text-lg">更全面理解</span>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h4 class="font-bold text-xl mb-4">位置编码：赋予序列顺序感</h4>
+                    <p class="text-gray-600 mb-4">在语言中，词语的顺序及其在句子中的位置对于理解含义至关重要。然而，由于Transformer并行处理所有标记（tokens），它们本身并不能捕获这种顺序信息。如果词语是同时处理的，那么它们的原始顺序就会丢失，除非明确地重新注入。</p>
+                    <p class="text-gray-600 mb-4"><strong>位置编码（Positional Encoding）</strong>就像每个词的“GPS坐标”，被明确地添加到词嵌入中，以保留词语在序列中的顺序信息。它让模型不仅能理解一个词是<em>什么</em>，还能理解它在序列中<em>哪里</em>，从而根据它们之间的相对位置理解它与其他词的关系。这对于像翻译这样的任务至关重要，因为词序的改变会影响含义（例如，“狗咬人”与“人咬狗”）。</p>
+                    <div class="flex items-center justify-center p-4 bg-gray-100 rounded-lg h-24 mt-4">
+                        <span class="font-bold text-lg">词嵌入 (含义)</span>
+                        <span class="mx-4 text-xl font-bold">+</span>
+                        <span class="font-bold text-lg">位置编码 (顺序)</span>
+                        <span class="mx-4 text-xl font-bold">→</span>
+                        <span class="font-bold text-lg">完整表示</span>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h4 class="font-bold text-xl mb-4">前馈网络：信息的深度加工</h4>
+                    <p class="text-gray-600">在每一次注意力机制处理信息后，紧接着的是一个<strong>前馈网络（Feed-Forward Network）</strong>。这是一个相对简单但至关重要的模块，它对每个词的表示进行独立的非线性变换。你可以将其视为一个深度加工环节，进一步提炼和转换注意力层所提取的特征，为模型增加更强大的表达和学习能力。</p>
+                    <div class="flex items-center justify-center p-4 bg-gray-100 rounded-lg h-24 mt-4">
+                        <span class="font-bold text-lg">注意力输出</span>
+                        <span class="mx-4 text-xl font-bold">→</span>
+                        <span class="font-bold text-lg">非线性转换</span>
+                        <span class="mx-4 text-xl font-bold">→</span>
+                        <span class="font-bold text-lg">提炼特征</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="blueprint" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">架构蓝图：解构Transformer</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">Transformer由“编码器”和“解码器”两大部分组成。您可以把编码器看作“阅读理解”模块，解码器看作“写作生成”模块。点击下方图示中的组件，查看其详细功能。</p>
+            </div>
+            <div class="grid lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border-2 border-dashed rounded-lg">
+                        <div class="p-4 border rounded-lg">
+                            <h4 class="font-bold text-center mb-4">编码器 (Encoder)</h4>
+                            <div class="space-y-2">
+                                <div id="block-input" class="architecture-block p-3 rounded-lg text-center">输入 + 位置编码</div>
+                                <div id="block-enc-self-attention" class="architecture-block p-3 rounded-lg text-center">多头自注意力</div>
+                                <div id="block-enc-ffn" class="architecture-block p-3 rounded-lg text-center">前馈网络</div>
+                                <div class="text-center text-gray-500 font-bold">... (重复N次)</div>
+                            </div>
+                        </div>
+                        <div class="p-4 border rounded-lg">
+                            <h4 class="font-bold text-center mb-4">解码器 (Decoder)</h4>
+                            <div class="space-y-2">
+                                <div id="block-output" class="architecture-block p-3 rounded-lg text-center">输出 + 位置编码</div>
+                                <div id="block-dec-masked-attention" class="architecture-block p-3 rounded-lg text-center">带掩码的多头自注意力</div>
+                                <div id="block-dec-cross-attention" class="architecture-block p-3 rounded-lg text-center">编码器-解码器注意力</div>
+                                <div id="block-dec-ffn" class="architecture-block p-3 rounded-lg text-center">前馈网络</div>
+                                <div class="text-center text-gray-500 font-bold">... (重复N次)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-1">
+                    <div id="blueprint-details" class="card p-6 rounded-lg h-full">
+                        <h4 class="font-bold text-xl mb-2">组件详情</h4>
+                        <p class="text-gray-600">点击左侧的任意模块来查看它的作用和解释。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="algorithm-analysis" class="mb-24 scroll-mt-20">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">算法分析：深入理解Transformer的效率</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">Transformer的革命性在于其并行计算能力和对长距离依赖的有效捕捉。这主要归功于其核心的自注意力机制。但这种强大能力也伴随着特定的计算成本。本节将从算法复杂度的角度深入解析。</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-12 items-start">
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">时间复杂度 ($O(N^2 \cdot d_{model})$)</h4>
+                    <p class="text-gray-600 mb-4">Transformer的时间复杂度主要由自注意力层决定。对于一个长度为 $N$ 的输入序列，假设模型的维度为 $d_{model}$ (即词向量的维度)，每个注意力头将 $d_{model}$ 投影到 $d_k$ (通常 $d_k = d_{model} / h$，其中 $h$ 是注意力头的数量)。</p>
+                    <p class="text-gray-600 mb-4">自注意力机制的核心是计算查询（Query）和键（Key）的点积来获得注意力分数，然后将分数乘以值（Value）。这个过程涉及到的矩阵乘法操作：</p>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-2">
+                        <li>计算 $Q \cdot K^T$：输入序列的长度为 $N$，每个词的维度为 $d_k$。因此，$Q$ 是一个 $N \times d_k$ 的矩阵， $K^T$ 是一个 $d_k \times N$ 的矩阵。它们的乘积结果是一个 $N \times N$ 的矩阵（注意力分数），这一步的复杂度是 $O(N^2 \cdot d_k)$。</li>
+                        <li>计算注意力分数乘以 $V$：生成的 $N \times N$ 注意力分数矩阵，乘以 $N \times d_k$ 的值矩阵 $V$。这一步的复杂度也是 $O(N^2 \cdot d_k)$。</li>
+                    </ul>
+                    <p class="text-gray-600 mb-4">由于通常有多个注意力头 ($h$ 个)，并且最后会将它们的输出拼接起来并进行线性变换，所以总的时间复杂度可以近似为 $O(N^2 \cdot d_{model})$，其中 $N$ 是序列长度， $d_{model}$ 是模型维度。</p>
+                    <p class="text-gray-600">这表明，Transformer处理长序列时，计算成本会呈平方增长。这也是为什么在处理极长文本时，需要引入稀疏注意力或线性注意力等变体来优化。</p>
+                </div>
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">空间复杂度 ($O(N^2)$)</h4>
+                    <p class="text-gray-600 mb-4">Transformer模型的空间复杂度同样主要来源于自注意力机制。主要的存储开销在于生成注意力分数矩阵，它的尺寸是 $N \times N$。这意味着对于一个长度为 $N$ 的序列，我们需要存储 $N^2$ 个浮点数来表示每个词对其他所有词的注意力权重。</p>
+                    <p class="text-gray-600 mb-4">具体来说：</p>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-2">
+                        <li><strong>注意力分数矩阵：</strong> 这是一个 $N \times N$ 的矩阵，用于存储查询和键的点积结果，其空间复杂度为 $O(N^2)$。</li>
+                        <li><strong>Key/Value缓存 (解码器):</strong> 在解码器生成输出时，为了避免重复计算，通常会缓存之前时间步的Key和Value向量。这个缓存的大小也与序列长度 $N$ 成正比，但在自回归生成时，这个 $N$ 是指已生成的序列长度。当序列很长时，这部分缓存也可能非常大，达到 $O(N \cdot d_{model})$。</li>
+                    </ul>
+                    <p class="text-gray-600">因此，Transformer的总空间复杂度至少是 $O(N^2)$。对于非常长的序列，这可能导致显著的内存消耗，限制了其在某些资源受限环境下的应用。</p>
+                </div>
+            </div>
+
+            <div class="mt-12">
+                <h4 class="font-bold text-xl mb-4 text-center">自注意力机制简化代码示例 (概念性)</h4>
+                <p class="text-gray-600 max-w-2xl mx-auto mb-6 text-center">以下是一个简化的Python风格伪代码，展示了自注意力机制的核心计算过程，不包含多头、残差连接和层归一化等复杂部分。</p>
+                <pre class="bg-gray-800 text-white p-6 rounded-lg overflow-x-auto text-sm"><code>
+import numpy as np
+
+def simplified_self_attention(query_matrix, key_matrix, value_matrix):
+    """
+    简化的自注意力机制计算。
+
+    Args:
+        query_matrix (np.array): 查询矩阵 (N, d_k)
+        key_matrix (np.array): 键矩阵 (N, d_k)
+        value_matrix (np.array): 值矩阵 (N, d_v)
+
+    Returns:
+        np.array: 注意力层的输出 (N, d_v)
+    """
+    
+    # 1. 计算 Query 和 Key 的点积，得到注意力分数
+    # 形状: (N, d_k) @ (d_k, N) = (N, N)
+    attention_scores = np.matmul(query_matrix, key_matrix.T)
+
+    # 2. 缩放注意力分数，防止梯度过大 (通常除以 d_k 的平方根)
+    d_k = query_matrix.shape[-1]
+    scaled_attention_scores = attention_scores / np.sqrt(d_k)
+
+    # 3. 应用 Softmax 归一化注意力分数，使其和为1
+    # 这表示每个词对其他词的“关注度”权重
+    attention_weights = softmax(scaled_attention_scores)
+
+    # 4. 注意力权重乘以 Value 矩阵，得到加权后的值
+    # 形状: (N, N) @ (N, d_v) = (N, d_v)
+    output = np.matmul(attention_weights, value_matrix)
+
+    return output
+
+def softmax(x):
+    """
+    Softmax 函数实现。
+    """
+    e_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
+    return e_x / np.sum(e_x, axis=-1, keepdims=True)
+
+# 示例输入 (N=3个词, d_k=4, d_v=4)
+# 实际的Q, K, V矩阵是通过输入词嵌入经过线性变换得到的
+# 这里仅为示意，假设已经得到了Q, K, V
+query_example = np.random.rand(3, 4)
+key_example = np.random.rand(3, 4)
+value_example = np.random.rand(3, 4)
+
+# 调用简化自注意力函数
+attention_output = simplified_self_attention(query_example, key_example, value_example)
+
+print("查询矩阵 (Query):\n", query_example)
+print("\n键矩阵 (Key):\n", key_example)
+print("\n值矩阵 (Value):\n", value_example)
+print("\n简化自注意力输出:\n", attention_output)
+                </code></pre>
+            </div>
+        </section>
+
+        <section id="family" class="mb-24 scroll-mt-20">
+             <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">模型家族与应用影响</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">Transformer架构构成了大多数现代大型语言模型（LLMs）的基础，它们在各行各业掀起了智能化浪潮。这里介绍几个最著名的“家族成员”及其应用领域。</p>
+            </div>
+            
+            <div class="flex justify-center mb-8">
+                <div class="flex space-x-2 p-1 bg-gray-200 rounded-full">
+                    <button class="tab-button px-6 py-2 rounded-full active" data-tab="bert">BERT</button>
+                    <button class="tab-button px-6 py-2 rounded-full" data-tab="gpt">GPT</button>
+                    <button class="tab-button px-6 py-2 rounded-full" data-tab="t5">T5</button>
+                </div>
+            </div>
+
+            <div id="model-cards-container">
+                <div class="tab-content" id="content-bert">
+                    <div class="grid md:grid-cols-2 gap-8 items-start">
+                        <div class="card p-6 rounded-lg">
+                            <h4 class="font-bold text-2xl mb-2">BERT</h4>
+                            <p class="font-semibold text-[#e07a5f] mb-4">双向编码器表示</p>
+                            <p class="text-gray-600 mb-4">BERT像一个阅读理解高手，它能同时结合一个词的“上文”和“下文”来深刻理解其精确含义。这种<strong>双向上下文理解</strong>能力是其核心优势，使其在分析和理解任务上表现卓越。</p>
+                            <div class="space-y-2">
+                               <p><strong>核心架构:</strong> 仅编码器</p>
+                               <p><strong>特点:</b> 双向上下文理解，擅长完形填空式任务</p>
+                               <p><strong>擅长:</strong> 搜索引擎优化、情感分析、命名实体识别</p>
+                            </div>
+                        </div>
+                        <div id="impact-bert" class="grid grid-cols-2 gap-4">
+                            </div>
+                    </div>
+                </div>
+                <div class="tab-content hidden" id="content-gpt">
+                     <div class="grid md:grid-cols-2 gap-8 items-start">
+                        <div class="card p-6 rounded-lg">
+                            <h4 class="font-bold text-2xl mb-2">GPT</h4>
+                            <p class="font-semibold text-[#e07a5f] mb-4">生成式预训练模型</p>
+                            <p class="text-gray-600 mb-4">GPT是一个创意写作大师。它根据已有的文本，预测下一个最可能的词，从而生成连贯、流畅、富有创造力的文章、对话和代码。其<strong>单向</strong>生成特性使其在创作类任务中表现突出。</p>
+                            <div class="space-y-2">
+                               <p><strong>核心架构:</strong> 仅解码器</p>
+                               <p><strong>特点:</strong> 单向文本生成，参数量庞大</p>
+                               <p><strong>擅长:</strong> 聊天机器人、创意写作、代码生成</p>
+                            </div>
+                        </div>
+                         <div id="impact-gpt" class="grid grid-cols-2 gap-4">
+                            </div>
+                    </div>
+                </div>
+                 <div class="tab-content hidden" id="content-t5">
+                     <div class="grid md:grid-cols-2 gap-8 items-start">
+                        <div class="card p-6 rounded-lg">
+                            <h4 class="font-bold text-2xl mb-2">T5</h4>
+                            <p class="font-semibold text-[#e07a5f] mb-4">文本到文本迁移模型</p>
+                            <p class="text-gray-600 mb-4">T5是一个全能瑞士军刀。它将所有NLP任务（翻译、摘要、问答等）都统一为“输入一段文本，输出一段文本”的格式，极具灵活性和通用性。这种<strong>统一的文本到文本框架</strong>是其独特之处。</p>
+                            <div class="space-y-2">
+                               <p><strong>核心架构:</strong> 编码器-解码器</p>
+                               <p><strong>特点:</strong> 统一所有任务为Text-to-Text</p>
+                               <p><strong>擅长:</b> 翻译、摘要、问答系统</p>
+                            </div>
+                        </div>
+                        <div id="impact-t5" class="grid grid-cols-2 gap-4">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-16 text-center">
+                <h3 class="text-3xl font-bold mb-4">超越语言：Transformer的广泛应用</h3>
+                <p class="mt-2 text-gray-600 max-w-2xl mx-auto mb-8">Transformer的强大能力使其不再局限于自然语言处理，它在更多领域展现了惊人的潜力。其核心的“注意力机制”被证明是一种通用的模式识别和关系建模范式，适用于任何可以表示为序列的数据。</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                    <div class="card p-6 rounded-lg text-center">
+                        <span class="text-5xl mb-4 block">🖼️🗣️</span>
+                        <h4 class="font-bold text-xl mb-2">多模态AI</h4>
+                        <p class="text-gray-600">Transformer能够有效融合图像、文本、语音、视频等多种模态的信息。例如，在<strong>文生图</strong>应用（如DALL-E, Midjourney）中，模型理解文本描述并生成符合语义的图像；在<strong>图像描述</strong>任务中，模型能识别图像内容并用自然语言进行准确描述。此外，它还在<strong>跨模态搜索</strong>和<strong>视频内容理解</strong>方面发挥关键作用，实现不同数据类型之间的深层关联与转换。</p>
+                    </div>
+                    <div class="card p-6 rounded-lg text-center">
+                        <span class="text-5xl mb-4 block">🧬🔬</span>
+                        <h4 class="font-bold text-xl mb-2">生物信息学</h4>
+                        <p class="text-gray-600">生物学数据如DNA、RNA序列和蛋白质序列本质上也是一种“语言”。Transformer凭借其出色的序列建模能力，被广泛应用于<strong>蛋白质结构预测</strong>（如AlphaFold）、<strong>基因序列分析</strong>、<strong>药物分子设计</strong>和<strong>基因组学研究</strong>。它能够捕捉生物序列中复杂的长距离依赖关系，从而加速新药研发、疾病诊断和生命科学的探索进程。</p>
+                    </div>
+                    <div class="card p-6 rounded-lg text-center">
+                        <span class="text-5xl mb-4 block">👍🛒</span>
+                        <h4 class="font-bold text-xl mb-2">推荐系统</h4>
+                        <p class="text-gray-600">在电商、流媒体、社交媒体等领域，用户的行为（如点击、购买、观看历史）可以被视为一个连续的序列。Transformer能有效学习这些<strong>用户行为序列</strong>中的复杂模式和用户偏好演变。通过理解用户与物品之间的交互序列，推荐系统能够提供更精准的<strong>个性化商品或内容推荐</strong>，预测用户未来的兴趣点，从而显著优化用户体验，提升商业转化效率。</p>
+                    </div>
+                    <div class="card p-6 rounded-lg text-center">
+                        <span class="text-5xl mb-4 block">🤖🎮</span>
+                        <h4 class="font-bold text-xl mb-2">机器人与游戏AI</h4>
+                        <p class="text-gray-600">Transformer也被应用于机器人路径规划和游戏AI中。通过将环境状态和动作序列化，模型能够学习复杂的决策策略，使机器人执行更精细的任务，或让游戏中的非玩家角色（NPC）表现出更智能、更具适应性的行为。</p>
+                    </div>
+                    <div class="card p-6 rounded-lg text-center">
+                        <span class="text-5xl mb-4 block">📈📊</span>
+                        <h4 class="font-bold text-xl mb-2">时间序列分析</h4>
+                        <p class="text-gray-600">Transformer处理序列数据的优势使其在金融、气象、医疗等领域的时间序列分析中大放异彩。它可以用于<strong>股票价格预测</strong>、<strong>天气预报</strong>、<strong>电力负荷预测</strong>，捕捉数据随时间变化的复杂模式和趋势，从而提供更准确的预测和决策支持。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="future" class="mb-24 scroll-mt-20">
+             <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">Transformer的星辰大海：未来展望</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">尽管Transformer取得了巨大的成功，但它并非没有局限。未来的研究正致力于解决这些挑战，并不断拓展AI能力的边界。</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-12 items-start">
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">挑战与优化方向</h4>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-2">
+                        <li><strong>高计算成本与内存消耗：</strong> 尤其是在处理超长序列时，现有Transformer模型对计算资源的需求非常高。尽管并行化提升了训练速度，但庞大的参数量导致绝对意义上的计算密集型。未来将探索更高效的<strong>稀疏注意力</strong>机制、内存优化技术和更轻量级的模型。</li>
+                        <li><strong>可解释性不足：</strong> 大型Transformer模型如同“黑箱”，其决策过程难以完全理解。这限制了其在高风险领域（如医疗、法律）的广泛应用和信任度。提升模型可解释性是未来研究的重要方向。</li>
+                        <li><strong>训练复杂性：</strong> 训练超大型模型需要庞大的数据集和大量的微调，成本高昂，且存在潜在的偏见问题。</li>
+                    </ul>
+                </div>
+                <div class="card p-6 rounded-lg">
+                    <h4 class="font-bold text-xl mb-4">新兴趋势与无限可能</h4>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-2">
+                        <li><strong>更深层次的多模态融合：</strong> 不仅仅是简单地处理多模态数据，而是实现更深层次、更紧密的跨模态理解和推理，构建更通用、更接近人类感知的AI模型。</li>
+                        <li><strong>模型效率与部署：</strong> 开发知识蒸馏、量化等技术，使Transformer模型能在更低资源设备上运行，实现更广泛的边缘和移动设备部署。</li>
+                        <li><strong>加速科学发现：</strong> Transformer在生物、化学、材料科学等领域展现巨大潜力，用于加速模拟、发现新分子和材料，推动前沿科学研究。</li>
+                        <li><strong>通用人工智能（AGI）的基石：：</strong> Transformer的通用序列处理能力使其成为构建未来通用人工智能（AGI）的重要组成部分，不断拓展AI能力的边界。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusion" class="text-center scroll-mt-20">
+             <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold">结语：重塑AI的未来，无限可能的探索</h3>
+                <p class="mt-4 text-gray-600 max-w-2xl mx-auto">Transformer架构的诞生，无疑是人工智能发展史上的一个重要里程碑。它以其独特的注意力机制和并行处理能力，不仅解决了传统模型在处理长序列和并行化方面的瓶颈，更以前所未有的效率和深度，推动了自然语言处理乃至整个AI领域的大步前进。</p>
+                <p class="mt-2 text-gray-600 max-w-2xl mx-auto">从理解复杂的语言语义到生成富有创意的文本和代码，从辅助科学研究到优化商业决策，Transformer的通用性和强大能力正在重塑我们与数字世界的交互方式。它不仅仅是深度学习模型的一种，更是引领我们走向通用人工智能（AGI）愿景的关键基石之一。</p>
+                <p class="mt-2 text-gray-600 max-w-2xl mx-auto">尽管前路仍有挑战，例如如何进一步提升模型效率、增强可解释性，以及应对训练成本等问题，但Transformer及其衍生模型的持续演进，预示着一个更加智能、更加个性化的未来。理解Transformer，就是把握住当前AI发展的核心脉络，也是洞察未来技术趋势的重要视角。它的故事仍在续写，而我们，正身处这场技术革命的中心。</p>
+                <button id="toggle-summary-btn" class="mt-8 bg-[#81b29a] text-white py-3 px-8 rounded-full text-lg font-semibold hover:bg-[#6a9e85] transition duration-300 ease-in-out shadow-lg">
+                    探索更多总结
+                </button>
+                <div id="conclusion-summary" class="hidden mt-8 p-6 bg-white rounded-lg shadow-xl max-w-3xl mx-auto text-left">
+                    <h4 class="font-bold text-2xl mb-4 text-[#3d405b]">核心要点回顾：</h4>
+                    <ul class="list-disc pl-5 text-gray-700 space-y-3">
+                        <li><strong>突破传统瓶颈：</strong> Transformer通过自注意力机制克服了RNN的顺序性限制和长距离依赖问题，实现了并行化处理。</li>
+                        <li><strong>多功能与普适性：</strong> 其核心的注意力机制是一种通用的序列建模范式，使其能应用于NLP以外的广泛领域。</li>
+                        <li><strong>驱动AI创新：</strong> 作为BERT、GPT等大型语言模型的基础，它极大地推动了聊天机器人、内容生成、智能推荐等应用的发展。</li>
+                        <li><strong>未来挑战与机遇：：</strong> 尽管计算成本和可解释性仍是挑战，但稀疏注意力、多模态融合、以及加速科学发现等方向展现了巨大潜力。</li>
+                        <li><strong>通向AGI之路：：</strong> Transformer的不断演进，正使其成为构建通用人工智能（AGI）愿景的重要基石。</li>
+                    </ul>
+                    <p class="mt-6 text-gray-600">Transformer不仅仅是技术上的飞跃，它代表着我们对智能系统理解和构建能力的深刻变革。它的影响力将继续扩大，深刻塑造未来的技术格局。</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-white mt-16">
+        <div class="container mx-auto px-6 py-4 text-center text-gray-500">
+            <p>&copy; 2025 交互式Transformer解析。</p>
+            <p>网页制作者：[尹超]</p>
+            <p>联系方式：[yinchao23@mails.ucas.ac.cn]</p>
+            <p>学校：[中国科学院大学]</p>
+            <p>版本：2.3</p>
+        </div>
+    </footer>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const chartData = {
+        labels: ['RNN/LSTM', 'Transformer'],
+        datasets: [{
+            label: '长距离依赖捕捉能力',
+            data: [65, 95],
+            backgroundColor: ['#e07a5f', '#81b29a'],
+            borderColor: ['#e07a5f', '#81b29a'],
+            borderWidth: 1
+        }]
+    };
+
+    const chartConfig = {
+        type: 'bar',
+        data: chartData,
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                       callback: function(value) {
+                           return value + '%'
+                       }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: '长距离依赖捕捉能力对比'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw}%`;
+                        }
+                    }
+                }
+            }
+        }
+    };
+    
+    const dependencyChartCtx = document.getElementById('dependencyChart').getContext('2d');
+    new Chart(dependencyChartCtx, chartConfig);
+
+
+    const playAnimationBtn = document.getElementById('play-animation-btn');
+    const rnnBoxes = document.querySelectorAll('#rnn-animation .processing-box');
+    const transformerBoxes = document.querySelectorAll('#transformer-animation .processing-box');
+
+    function resetAnimation() {
+        [...rnnBoxes, ...transformerBoxes].forEach(box => {
+            box.style.transition = 'none';
+            box.style.transform = 'translateY(100px)'; /* Start off-screen */
+            box.style.opacity = '0';
+        });
+    }
+
+    playAnimationBtn.addEventListener('click', () => {
+        resetAnimation();
+        
+        setTimeout(() => {
+            // RNN animation (sequential)
+            rnnBoxes.forEach((box, i) => {
+                box.style.transition = 'transform 1s ease-in-out, opacity 0.5s ease-in-out';
+                setTimeout(() => {
+                    box.style.transform = 'translateY(0)';
+                    box.style.opacity = '1';
+                }, i * 400); // Staggered appearance
+            });
+
+            // Transformer animation (parallel)
+            transformerBoxes.forEach(box => {
+                box.style.transition = 'transform 1s ease-in-out, opacity 0.5s ease-in-out';
+                box.style.transform = 'translateY(0)';
+                box.style.opacity = '1';
+            });
+        }, 100); // Small delay to ensure reset takes effect
+    });
+
+    // Initial reset to hide elements before animation
+    resetAnimation();
+    
+    const attentionWords = document.querySelectorAll('.interactive-word');
+    const attentionVizContainer = document.getElementById('attention-visualization');
+    const sentence = Array.from(attentionWords).map(w => w.textContent);
+    
+    const attentionData = {
+        'AI': [1.0, 0.4, 0.5, 0.1, 0.2, 0.1, 0.1, 0.3, 0.1, 0.8, 0.7, 0.6, 0.2, 0.4, 0.2, 0.1],
+        '的': [0.6, 1.0, 0.8, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        '发展': [0.7, 0.5, 1.0, 0.4, 0.5, 0.2, 0.1, 0.3, 0.1, 0.6, 0.4, 0.8, 0.3, 0.4, 0.2, 0.1],
+        '正在': [0.1, 0.1, 0.5, 1.0, 0.9, 0.2, 0.1, 0.2, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1],
+        '重塑': [0.2, 0.1, 0.6, 0.8, 1.0, 0.7, 0.3, 0.8, 0.1, 0.3, 0.2, 0.4, 0.1, 0.2, 0.1, 0.1],
+        '我们': [0.1, 0.1, 0.2, 0.1, 0.6, 1.0, 0.9, 0.8, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        '的': [0.1, 0.1, 0.1, 0.1, 0.2, 0.8, 1.0, 0.7, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        '世界': [0.3, 0.1, 0.4, 0.2, 0.7, 0.9, 0.8, 1.0, 0.2, 0.3, 0.2, 0.3, 0.2, 0.2, 0.1, 0.2],
+        '，': [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1.0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        '它': [0.8, 0.2, 0.5, 0.1, 0.3, 0.2, 0.1, 0.4, 0.1, 1.0, 0.9, 0.7, 0.4, 0.3, 0.2, 0.1],
+        '的': [0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.9, 1.0, 0.8, 0.2, 0.1, 0.1, 0.1],
+        '潜力': [0.5, 0.1, 0.7, 0.2, 0.4, 0.1, 0.1, 0.3, 0.1, 0.8, 0.7, 1.0, 0.6, 0.8, 0.4, 0.2],
+        '是': [0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.3, 0.2, 0.6, 1.0, 0.7, 0.3, 0.1],
+        '巨大': [0.3, 0.1, 0.4, 0.1, 0.2, 0.1, 0.1, 0.2, 0.1, 0.4, 0.2, 0.9, 0.6, 1.0, 0.8, 0.3],
+        '的': [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2, 0.2, 0.4, 0.3, 0.8, 1.0, 0.5],
+        '。': [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 1.0],
+    };
+
+    function displayAttention(word) {
+        attentionVizContainer.innerHTML = '';
+        const scores = attentionData[word];
+        scores.forEach((score, i) => {
+            const wordBar = document.createElement('div');
+            wordBar.className = 'flex items-center space-x-4';
+            wordBar.innerHTML = `
+                <span class="w-20 text-right font-medium">${sentence[i]}</span>
+                <div class="attention-bar-container flex-1">
+                    <div class="attention-bar" style="width: ${score * 100}%;"></div>
+                </div>
+                <span class="w-12 text-left text-sm text-gray-500">${(score * 100).toFixed(0)}%</span>
+            `;
+            attentionVizContainer.appendChild(wordBar);
+        });
+    }
+
+    attentionWords.forEach(wordEl => {
+        wordEl.addEventListener('click', () => {
+            attentionWords.forEach(w => w.classList.remove('active'));
+            wordEl.classList.add('active');
+            displayAttention(wordEl.textContent);
+        });
+    });
+
+    // Automatically click "它" to show initial attention
+    attentionWords[9].click(); 
+
+    const blueprintBlocks = document.querySelectorAll('.architecture-block');
+    const detailsContainer = document.getElementById('blueprint-details');
+
+    const blockDetails = {
+        'block-input': {
+            title: '输入与位置编码',
+            text: '在处理文本前，模型需要两样东西：1）将词语转为计算机能理解的数字向量（词嵌入）；2）为每个词添加一个“位置标签”（位置编码），告诉模型词语的顺序。这两者相加后，成为编码器的正式输入。<br><br><strong>重要补充：残差连接与层归一化</strong><br>在这个输入层之后以及每个子层（如注意力层和前馈网络）之后，都会应用<strong>残差连接（Residual Connection）</strong>和<strong>层归一化（Layer Normalization）</strong>。残差连接让信息可以“跳过”某些层，直接将输入加到输出上，防止信息在深层网络中丢失或梯度消失。层归一化则用于稳定训练，使网络学习更高效，就像标准化的数据更易于处理。'
+        },
+        'block-enc-self-attention': {
+            title: '多头自注意力 (编码器)',
+            text: '这是编码器的核心。它让输入句子中的每个词都能“看到”所有其他词，并计算出彼此的关联度。通过这种方式，模型能构建对整个句子上下文的深刻理解，尤其是捕捉长距离的依赖关系。<br><br><strong>重要补充：残差连接与层归一化</strong><br>在这个子层处理后，其输出会通过一个残差连接与原始输入相加，然后进行层归一化。这有助于确保信息流动顺畅，并稳定训练过程。'
+        },
+        'block-enc-ffn': {
+            title: '前馈网络 (编码器)',
+            text: '在自注意力层处理完信息后，前馈网络会对每个词的表示进行一次非线性变换。可以把它想象成一个“加工厂”，对注意力层输出的结果进行进一步的提炼和深化，以提取更丰富的特征。<br><br><strong>重要补充：残差连接与层归一化</strong><<br>这个子层之后也同样应用残差连接和层归一化，以保持网络深度学习的稳定性和效率。'
+        },
+        'block-output': {
+            title: '输出与位置编码',
+            text: '解码器在生成文本时，也需要将已生成的词语转换为向量，并添加位置编码。这与编码器输入阶段的原理相同，目的是让解码器理解自己已经生成了什么，以及它们的顺序。<br><br><strong>重要补充：残差连接与层归一化</strong><br>与编码器类似，解码器的输入和每个子层之后也同样应用残差连接和层归一化，以确保稳定的信息流和高效学习。'
+        },
+        'block-dec-masked-attention': {
+            title: '带掩码的多头自注意力',
+            text: '这是解码器的第一个注意力层。它与编码器的自注意力类似，但增加了一个“掩码”（Mask）。这个掩码的作用是防止模型在预测下一个词时“偷看”到答案。它确保预测位置i时，只能依赖于i之前已经生成的词，这对于生成任务至关重要。<br><br><strong>重要补充：残差连接与层归一化</strong><br>这个子层之后也同样应用残差连接和层归一化。'
+        },
+        'block-dec-cross-attention': {
+            title: '编码器-解码器注意力',
+            text: '这是连接编码器和解码器的桥梁。它允许解码器在生成每个新词时，去“关注”输入句子的所有部分（即编码器的输出）。这确保了生成的内容与原始输入高度相关。例如，在翻译任务中，它帮助解码器将法语句子中的词对准相应的英语单词。<br><br><strong>重要补充：残差连接与层归一化</strong><br>这个子层之后也同样应用残差连接和层归一化。'
+        },
+        'block-dec-ffn': {
+            title: '前馈网络 (解码器)',
+            text: '与编码器中的前馈网络功能相同，它对解码器中注意力层处理后的信息进行进一步的加工和提炼，为最终生成下一个词的决策做准备。<br><br><strong>重要补充：残差连接与层归一化</strong><br>这个子层之后也同样应用残差连接和层归一化。'
+        }
+    };
+    
+    blueprintBlocks.forEach(block => {
+        block.addEventListener('click', () => {
+            blueprintBlocks.forEach(b => b.classList.remove('active'));
+            block.classList.add('active');
+            const details = blockDetails[block.id];
+            detailsContainer.innerHTML = `
+                <h4 class="font-bold text-xl mb-2 text-[#3d405b]">${details.title}</h4>
+                <p class="text-gray-600">${details.text}</p>
+            `;
+        });
+    });
+
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    const impactData = {
+        bert: [
+            { icon: '🔍', text: '搜索引擎优化，更准确地理解用户查询意图。' },
+            { icon: '😊', text: '精准的情感分析，用于评论和社交媒体监控。' },
+            { icon: '🏢', text: '从合同、报告中自动识别和提取关键信息。' },
+            { icon: '❓', text: '构建更智能的客服问答机器人。' }
+        ],
+        gpt: [
+            { icon: '💬', text: '驱动ChatGPT等先进的对话式AI。' },
+            { icon: '✍️', text: '辅助内容创作，如撰写邮件、博客和营销文案。' },
+            { icon: '💻', text: '根据自然语言描述自动生成代码片段。' },
+            { icon: '📖', text: '进行创意写作，如诗歌、剧本和故事。' }
+        ],
+        t5: [
+             { icon: '🌐', text: '高质量的机器翻译，支持多种语言对。' },
+             { icon: '📄', text: '将长篇文档自动浓缩为核心要点摘要。' },
+             { icon: '❓', text: '在给定文章中查找并回答特定问题。' },
+             { icon: '📝', text: '根据关键词或大纲自动生成各类文档。' }
+        ]
+    };
+
+    function renderImpactCards(model) {
+        const container = document.getElementById(`impact-${model}`);
+        container.innerHTML = impactData[model].map(item => `
+            <div class="bg-white p-4 rounded-lg shadow-sm flex items-center space-x-4">
+                <span class="text-3xl">${item.icon}</span>
+                <p class="text-gray-600 text-sm">${item.text}</p>
+            </div>
+        `).join('');
+    }
+
+    // Render initial impact cards for the active tab (BERT)
+    renderImpactCards('bert');
+    renderImpactCards('gpt');
+    renderImpactCards('t5');
+
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            const tab = button.dataset.tab;
+            tabContents.forEach(content => {
+                if (content.id === `content-${tab}`) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+        });
+    });
+    
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    mobileMenuButton.addEventListener('click', () => {
+        mobileMenu.classList.toggle('hidden');
+    });
+
+    // Close mobile menu when a navigation link is clicked
+    const navLinks = document.querySelectorAll('nav a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            if(mobileMenu.classList.contains('hidden') === false) {
+                 mobileMenu.classList.add('hidden');
+            }
+        });
+    });
+
+    // Highlight active section in navigation
+    const sections = document.querySelectorAll('section');
+    const allNavLinks = document.querySelectorAll('.nav-link');
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            // Adjust this offset based on your header height to get accurate highlighting
+            if (pageYOffset >= sectionTop - 100) { 
+                current = section.getAttribute('id');
+            }
+        });
+
+        allNavLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href').includes(current)) {
+                link.classList.add('active');
+            }
+        });
+    });
+
+    // JavaScript for the interactive conclusion section
+    const toggleSummaryBtn = document.getElementById('toggle-summary-btn');
+    const conclusionSummary = document.getElementById('conclusion-summary');
+
+    if (toggleSummaryBtn && conclusionSummary) {
+        toggleSummaryBtn.addEventListener('click', () => {
+            conclusionSummary.classList.toggle('hidden');
+            if (conclusionSummary.classList.contains('hidden')) {
+                toggleSummaryBtn.textContent = '探索更多总结';
+            } else {
+                toggleSummaryBtn.textContent = '收起总结';
+            }
+        });
+    }
+
+    // Initialize KaTeX rendering after the DOM is loaded
+    renderMathInElement(document.body, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true}, // Block math
+            {left: '$', right: '$', display: false},  // Inline math
+        ]
+    });
+
+});
+</script>
+</body>
+</html>
