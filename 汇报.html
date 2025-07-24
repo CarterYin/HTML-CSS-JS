@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人类表型项目中健康-疾病连续体的深度表型分析 | Nature Medicine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #F8F7F4;
+            color: #3D405B;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 450px;
+            }
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .nav-link.active {
+            background-color: #EAE7E1;
+            border-left-color: #81B29A;
+            color: #3D405B;
+            font-weight: 500;
+        }
+        .nav-link:hover {
+            background-color: #EAE7E1;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            text-align: center;
+        }
+        .interactive-btn {
+            transition: all 0.2s ease;
+        }
+        .interactive-btn.active {
+            background-color: #81B29A;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .health-outcome-card {
+            transition: all 0.3s ease;
+            border: 1px solid #EAE7E1;
+        }
+        .health-outcome-card.positive {
+            border-color: #81B29A;
+            box-shadow: 0 0 15px rgba(129, 178, 154, 0.3);
+            transform: translateY(-2px);
+        }
+        .health-outcome-card.negative {
+            border-color: #E07A5F;
+            box-shadow: 0 0 15px rgba(224, 122, 95, 0.3);
+            transform: translateY(-2px);
+        }
+        .info-box {
+            background-color: #F8F7F4;
+            border-left: 4px solid #81B29A;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+        .figure-container {
+            background-color: #FFFFFF;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .figure-caption {
+            font-size: 0.875rem;
+            color: #6B7280;
+            margin-top: 1rem;
+            font-style: italic;
+        }
+        .subsection {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #E5E7EB;
+        }
+        .highlight-box {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        .method-section {
+            background-color: #F3F4F6;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row min-h-screen">
+
+    <nav class="w-full md:w-64 bg-white border-r border-gray-200 p-4 md:fixed md:h-full overflow-y-auto">
+        <div class="flex items-center mb-8">
+            <div class="w-10 h-10 bg-gradient-to-br from-[#81B29A] to-[#F2CC8F] rounded-full mr-3"></div>
+            <h1 class="text-xl font-bold text-[#3D405B]">HPP 研究报告</h1>
+        </div>
+        <ul>
+            <li><a href="#overview" class="nav-link block p-3 rounded-lg mb-2">1. 整体概述</a></li>
+            <li><a href="#results" class="nav-link block p-3 rounded-lg mb-2">2. 结果</a></li>
+            <li class="ml-4">
+                <a href="#cohort" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.1 HPP队列</a>
+                <a href="#ethnicity" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.2 种族变异</a>
+                <a href="#aging" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.3 年龄相关变化</a>
+                <a href="#microbiome" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.4 微生物组特征</a>
+                <a href="#integration" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.5 多模态数据整合</a>
+                <a href="#lifestyle" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.6 生活方式因素</a>
+                <a href="#ai" class="nav-link block p-2 rounded-lg mb-1 text-sm">2.7 基础AI模型</a>
+            </li>
+            <li><a href="#discussion" class="nav-link block p-3 rounded-lg mb-2">3. 讨论</a></li>
+            <li><a href="#methods" class="nav-link block p-3 rounded-lg mb-2">4. 方法</a></li>
+        </ul>
+        <div class="mt-8 text-xs text-gray-400">
+            <p>&copy; 2025 Nature Medicine</p>
+            <p>Deep phenotyping of health–disease continuum</p>
+        </div>
+    </nav>
+
+    <main class="flex-1 md:ml-64 p-6 sm:p-8 lg:p-12">
+        
+        <!-- 1. 整体概述 -->
+        <section id="overview" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">1. 整体概述</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <p class="text-lg leading-relaxed mb-4">
+                    人类表型项目（Human Phenotype Project, HPP）是一项大规模、前瞻性的深度表型研究，旨在通过整合临床、分子、成像、传感器和患者报告的数据，全面理解健康与疾病之间的连续体。该项目由以色列魏茨曼科学研究所主导，计划对数万名参与者进行长达25年的纵向随访。
+                </p>
+                
+                <div class="highlight-box">
+                    <h3 class="font-bold mb-2">研究目标</h3>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>建立健康-疾病连续体的综合数据库</li>
+                        <li>识别新型分子标记物和疾病早期预测因子</li>
+                        <li>开发基于AI的个性化健康预测模型</li>
+                        <li>推动精准医疗和预防医学的发展</li>
+                    </ul>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    <div class="stat-card">
+                        <p class="text-4xl font-bold text-[#81B29A]" id="participants-stat">0</p>
+                        <p class="text-gray-500 mt-2">注册参与者</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-4xl font-bold text-[#F2CC8F]" id="visits-stat">0</p>
+                        <p class="text-gray-500 mt-2">完成首次访视</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-4xl font-bold text-[#E07A5F]" id="datapoints-stat">0</p>
+                        <p class="text-gray-500 mt-2">数据点（百万）</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-2xl font-bold mb-4">数据收集框架</h3>
+                <p class="mb-4">HPP采用多维度、多时间点的数据收集策略，包括：</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-bold text-lg mb-2 text-[#81B29A]">基线数据收集</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 详细病史和家族史</li>
+                            <li>• 全面体格检查和人体测量</li>
+                            <li>• 多模态成像（眼底、颈动脉超声等）</li>
+                            <li>• 广泛的实验室检测</li>
+                            <li>• 多组学分析（基因组、转录组、蛋白质组、代谢组、微生物组）</li>
+                        </ul>
+                    </div>
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-bold text-lg mb-2 text-[#F2CC8F]">纵向随访</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 年度在线问卷调查</li>
+                            <li>• 每两年一次的研究中心访视</li>
+                            <li>• 连续血糖监测（CGM）</li>
+                            <li>• 睡眠呼吸监测</li>
+                            <li>• 实时饮食记录（移动应用）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 结果 -->
+        <section id="results" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2. 结果</h2>
+            <p class="text-lg text-gray-600">HPP研究产生了丰富的发现，涵盖了从队列特征到AI模型开发的多个方面。</p>
+        </section>
+
+        <!-- 2.1 HPP队列 -->
+        <section id="cohort" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.1 HPP队列</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">队列特征</h3>
+                <p class="mb-4">
+                    截至分析时，HPP已招募27,916名参与者，其中13,072人完成了首次研究中心访视。队列呈现以下特征：
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold mb-2">人口统计学特征</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 平均年龄：44.4 ± 11.9岁（范围：20-89岁）</li>
+                            <li>• 性别分布：女性占53.5%</li>
+                            <li>• 平均BMI：26.1 ± 4.7 kg/m²</li>
+                            <li>• 教育水平：82%拥有大学或以上学历</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">健康状况</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 高血压：15.2%</li>
+                            <li>• 糖尿病：5.8%</li>
+                            <li>• 血脂异常：28.3%</li>
+                            <li>• 当前吸烟者：8.7%</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图1：HPP数据收集概览</h4>
+                <div class="chart-container">
+                    <canvas id="dataCollectionChart"></canvas>
+                </div>
+                <p class="figure-caption">
+                    图1. HPP多维度数据收集框架。展示了从临床评估到多组学分析的综合数据收集方法，以及纵向随访设计。
+                                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">数据收集深度</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-3xl font-bold text-[#81B29A]">3,030,837</p>
+                        <p class="text-sm text-gray-600 mt-2">记录的餐次</p>
+                        <p class="text-xs text-gray-500">平均每人234.5餐</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-3xl font-bold text-[#F2CC8F]">10,812</p>
+                        <p class="text-sm text-gray-600 mt-2">CGM监测参与者</p>
+                        <p class="text-xs text-gray-500">连续血糖数据</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-3xl font-bold text-[#E07A5F]">5,982</p>
+                        <p class="text-sm text-gray-600 mt-2">睡眠监测参与者</p>
+                        <p class="text-xs text-gray-500">WatchPAT设备</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.2 种族变异 -->
+        <section id="ethnicity" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.2 临床和多组学数据中的种族变异</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">种族多样性</h3>
+                <p class="mb-4">
+                    HPP队列包含了丰富的种族多样性，主要通过参与者祖父母的出生国来定义。这种多样性为研究遗传和环境因素对健康的影响提供了独特机会。
+                </p>
+                
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                    <div class="stat-card">
+                        <p class="text-2xl font-bold text-[#3D405B]">6,270</p>
+                        <p class="text-sm">阿什肯纳兹犹太人</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-2xl font-bold text-[#3D405B]">943</p>
+                        <p class="text-sm">北非人</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-2xl font-bold text-[#3D405B]">780</p>
+                        <p class="text-sm">中东人</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-2xl font-bold text-[#3D405B]">249</p>
+                        <p class="text-sm">也门人</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-2xl font-bold text-[#3D405B]">264</p>
+                        <p class="text-sm">塞法迪犹太人</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-2xl font-bold text-[#3D405B]">2,837</p>
+                        <p class="text-sm">混合背景</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图2：不同数据模态对种族的预测能力</h4>
+                <div class="flex flex-wrap justify-center space-x-2 mb-4">
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="all">全部模态</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="genetics">遗传学</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="microbiome">微生物组</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="clinical">临床数据</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="ethnicityPredictionChart"></canvas>
+                </div>
+                <p class="figure-caption">
+                    图2. 使用不同数据模态预测种族背景的AUC值。遗传学数据显示最高预测能力（AUC=0.92），而微生物组数据预测能力较低（AUC=0.55），表明环境因素对微生物组的影响大于遗传因素。
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">种族特异性健康差异</h3>
+                <p class="mb-4">
+                    通过倾向得分匹配（按年龄、性别、BMI匹配），比较了阿什肯纳兹犹太人（n=2,513）与非阿什肯纳兹犹太人（n=2,510）的表型差异：
+                </p>
+                
+                <div class="info-box">
+                    <h4 class="font-semibold mb-2">主要发现</h4>
+                    <ul class="list-disc list-inside text-sm space-y-1">
+                        <li>饮食习惯：阿什肯纳兹犹太人摄入更多的乳制品和全谷物（P < 0.001）</li>
+                        <li>血脂谱：LDL胆固醇水平存在显著差异（P = 0.003）</li>
+                        <li>炎症标志物：C反应蛋白水平在不同种族间有差异（P = 0.012）</li>
+                        <li>微生物组：尽管遗传差异明显，但微生物组组成在PCA分析中未显示明显分离</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.3 年龄相关变化 -->
+        <section id="aging" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.3 临床和多组学随年龄的变化</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">生物学年龄与实际年龄</h3>
+                <p class="mb-4">
+                    研究开发了多个生物学年龄预测模型，包括基于心血管参数、基因表达和表观遗传学的模型。这些模型揭示了生物学衰老与实际年龄之间的重要差异。
+                </p>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-semibold mb-3 text-[#81B29A]">加速衰老者特征（前10%）</h4>
+                        <ul class="text-sm space-y-2">
+                            <li class="flex justify-between">
+                                <span>甘油三酯：</span>
+                                <span class="font-mono">128.06 ± 45.2 mg/dl</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>空腹血糖：</span>
+                                <span class="font-mono">95.75 ± 12.3 mg/dl</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>HbA1c：</span>
+                                <span class="font-mono">5.53 ± 0.42%</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>腰围：</span>
+                                <span class="font-mono">92.19 ± 11.8 cm</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-semibold mb-3 text-[#F2CC8F]">减速衰老者特征（后10%）</h4>
+                        <ul class="text-sm space-y-2">
+                            <li class="flex justify-between">
+                                <span>甘油三酯：</span>
+                                <span class="font-mono">96.41 ± 38.7 mg/dl</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>空腹血糖：</span>
+                                <span class="font-mono">91.94 ± 9.8 mg/dl</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>HbA1c：</span>
+                                <span class="font-mono">5.36 ± 0.35%</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>腰围：</span>
+                                <span class="font-mono">87.03 ± 10.2 cm</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-600 mt-4">所有差异均具有统计学显著性（P < 0.001）</p>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图3：更年期对女性骨密度的影响</h4>
+                <div class="chart-container">
+                    <canvas id="menopauseBMDChart"></canvas>
+                </div>
+                <p class="figure-caption">
+                    图3. 骨密度与距离更年期时间的关系（Spearman's ρ = -0.24, P < 0.001）比与实际年龄的关系（ρ = -0.19, P < 0.001）更强，突显了更年期作为女性健康关键转折点的重要性。
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">年龄相关的临床参数变化</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold mb-2">血糖变化</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 男性：每10年增加2.6 mg/dl</li>
+                            <li>• 女性：每10年增加2.5 mg/dl</li>
+                            <li>• CGM数据显示40%基线正常个体在连续监测中出现糖尿病前期血糖水平</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold mb-2">睡眠呼吸暂停</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 中重度OSA患病率：6.6%-36.4%（取决于年龄和性别）</li>
+                            <li>• 男性患病率显著高于女性</li>
+                            <li>• 与BMI和颈围强相关</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h3 class="text-xl font-bold mb-4">纵向稳定性分析</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <p class="mb-4">
+                        对同一个体在2-5年间隔的重复测量显示了显著的个体内稳定性：
+                    </p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center p-3 bg-gray-50 rounded">
+                            <p class="font-semibold">微生物组</p>
+                            <p class="text-2xl font-bold text-[#81B29A]">87%</p>
+                            <p class="text-xs text-gray-600">菌株水平重叠</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded">
+                            <p class="font-semibold">代谢组</p>
+                            <p class="text-2xl font-bold text-[#F2CC8F]">r=0.82</p>
+                            <p class="text-xs text-gray-600">相关系数</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded">
+                            <p class="font-semibold">蛋白质组</p>
+                            <p class="text-2xl font-bold text-[#E07A5F]">r=0.78</p>
+                            <p class="text-xs text-gray-600">相关系数</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded">
+                            <p class="font-semibold">睡眠模式</p>
+                            <p class="text-2xl font-bold text-[#3D405B]">r=0.71</p>
+                            <p class="text-xs text-gray-600">相关系数</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.4 微生物组特征 -->
+        <section id="microbiome" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.4 匹配疾病队列中的微生物组特征</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">疾病特异性微生物组分析</h3>
+                <p class="mb-4">
+                    利用HPP的大规模健康对照队列，研究团队能够精确识别与特定疾病相关的微生物组特征。通过严格的年龄、性别和BMI匹配，确保了比较的可靠性。
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="stat-card">
+                        <h4 class="font-semibold text-lg mb-2">乳腺癌队列</h4>
+                        <p class="text-sm">患者: 219人</p>
+                        <p class="text-sm">对照: 1,075人</p>
+                        <p class="text-xs text-gray-500 mt-2">按年龄和BMI匹配</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 class="font-semibold text-lg mb-2">IBD队列</h4>
+                        <p class="text-sm">患者: 182人</p>
+                        <p class="text-sm">对照: 2,548人</p>
+                        <p class="text-xs text-gray-500 mt-2">按年龄和性别匹配</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4 class="font-semibold text-lg mb-2">子宫内膜异位症</h4>
+                        <p class="text-sm">患者: 110人</p>
+                        <p class="text-sm">对照: 220人</p>
+                        <p class="text-xs text-gray-500 mt-2">按年龄和BMI匹配</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图4：疾病特异性微生物组特征</h4>
+                <div class="flex justify-center mb-4">
+                    <select id="disease-selector" class="p-2 border rounded-lg bg-gray-50">
+                        <option value="bc">乳腺癌</option>
+                        <option value="ibd">炎症性肠病</option>
+                        <option value="endometriosis">子宫内膜异位症</option>
+                    </select>
+                </div>
+                <div class="chart-container">
+                    <canvas id="microbiomeChart"></canvas>
+                </div>
+                <p class="figure-caption">
+                    图4. 不同疾病患者与健康对照组的关键细菌相对丰度比较。显示了疾病特异性的微生物组改变模式。
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">关键微生物组发现</h3>
+                
+                <div class="space-y-4">
+                    <div class="border-l-4 border-[#81B29A] pl-4">
+                        <h4 class="font-semibold mb-2">乳腺癌相关改变</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• <strong>粪杆菌属（Faecalibacterium）</strong>：患者0.037 vs 对照0.045（P < 0.001）</li>
+                            <li>• <strong>梭链细菌属（Fusicatenibacter）</strong>：患者0.006 vs 对照0.004（P < 0.001）</li>
+                            <li>• 微生物多样性显著降低（Shannon指数：5.29 vs 5.50，P < 0.001）</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="border-l-4 border-[#F2CC8F] pl-4">
+                        <h4 class="font-semibold mb-2">IBD相关改变</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• <strong>瘤胃球菌属（Ruminococcus gnavus）</strong>：患者0.02 vs 对照0.0001（P < 0.001）</li>
+                            <li>• <strong>大肠杆菌（Escherichia coli）</strong>：患者0.01 vs 对照0.001（P < 0.001）</li>
+                            <li>• 促炎细菌显著增加，有益菌减少</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="border-l-4 border-[#E07A5F] pl-4">
+                        <h4 class="font-semibold mb-2">子宫内膜异位症相关改变</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• <strong>黄酮分解杆菌属（Flavonifractor）</strong>：患者0.001 vs 对照0.0004（P < 0.0001）</li>
+                            <li>• <strong>颤杆菌属（Oscillibacter）</strong>：患者0.0006 vs 对照0.02（P < 0.0001）</li>
+                            <li>• 与炎症和代谢途径相关的细菌改变</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.5 多模态数据整合 -->
+        <section id="integration" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.5 通过多模态数据整合研究个体水平的疾病发病机制</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">整合分析方法</h3>
+                <p class="mb-4">
+                    研究采用了多种计算方法来整合不同数据模态，包括：
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">MOFA+（多组学因子分析）</h4>
+                        <p class="text-sm">
+                            识别跨多个数据层的共同变异源，揭示了10个主要因子，解释了数据中15-30%的变异。
+                        </p>
+                    </div>
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">网络分析</h4>
+                        <p class="text-sm">
+                            构建了包含临床、分子和微生物组数据的综合网络，识别了疾病相关的关键节点和通路。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图5：多组学数据整合揭示的疾病亚型</h4>
+                <div class="bg-gray-100 rounded-lg p-8 text-center">
+                    <p class="text-gray-600">多组学整合分析示意图</p>
+                    <div class="mt-4 space-y-2">
+                        <div class="bg-white rounded p-3 max-w-md mx-auto">临床数据 + 基因组学 + 转录组学</div>
+                        <div class="text-2xl">↓</div>
+                        <div class="bg-blue-100 rounded p-3 max-w-md mx-auto">MOFA+ 整合分析</div>
+                        <div class="text-2xl">↓</div>
+                        <div class="bg-green-100 rounded p-3 max-w-md mx-auto">疾病亚型识别 & 个性化风险评估</div>
+                    </div>
+                </div>
+                <p class="figure-caption">
+                    图5. 多组学数据整合策略。通过MOFA+等方法整合多层数据，识别疾病亚型和个体化风险因素。
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">关键整合发现</h3>
+                
+                <div class="highlight-box">
+                    <h4 class="font-semibold mb-2">代谢综合征的多组学特征</h4>
+                    <p class="text-sm mb-2">
+                        通过整合分析识别了代谢综合征的三个不同亚型：
+                    </p>
+                    <ul class="list-disc list-inside text-sm space-y-1">
+                        <li><strong>亚型1</strong>：以胰岛素抵抗为主，伴有特定的肠道微生物组特征</li>
+                        <li><strong>亚型2</strong>：以脂质代谢异常为主，与特定基因变异相关</li>
+                        <li><strong>亚型3</strong>：以慢性炎症为主，表现为多种炎症标志物升高</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.6 生活方式因素 -->
+        <section id="lifestyle" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.6 生活方式因素及其与健康结果的关联</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">饮食模式分析</h3>
+                <p class="mb-4">
+                    通过移动应用收集的详细饮食数据（平均每人234.5餐），研究揭示了饮食模式与健康结果之间的密切关系。
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="stat-card">
+                        <p class="text-lg font-semibold">碳水化合物</p>
+                        <p class="text-2xl font-bold text-[#81B29A]">39.7%</p>
+                        <p class="text-sm text-gray-600">± 8.2%</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-lg font-semibold">脂肪</p>
+                        <p class="text-2xl font-bold text-[#F2CC8F]">37.8%</p>
+                        <p class="text-sm text-gray-600">± 6.7%</p>
+                    </div>
+                    <div class="stat-card">
+                        <p class="text-lg font-semibold">蛋白质</p>
+                        <p class="text-2xl font-bold text-[#E07A5F]">18.4%</p>
+                        <p class="text-sm text-gray-600">± 4.2%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图6：饮食模式与健康结果的关联</h4>
+                <div class="flex justify-center space-x-2 mb-4">
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-diet="upf">超加工食品</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-diet="mediterranean">地中海饮食</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-diet="plant">植物性饮食</button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="health-outcomes-grid">
+                    <!-- 动态加载内容 -->
+                </div>
+                <p class="figure-caption mt-4">
+                    图6. 不同饮食模式与健康指标的关联。红色表示负面影响，绿色表示正面影响。
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">纵向饮食变化的影响</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-semibold mb-2 text-red-600">转向超加工食品的后果</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• BMI增加：平均+0.8 kg/m²（P < 0.001）</li>
+                            <li>• 腰围增加：平均+2.3 cm（P < 0.001）</li>
+                            <li>• 收缩压升高：平均+3.2 mmHg（P = 0.002）</li>
+                            <li>• 炎症标志物升高（CRP、白细胞计数）</li>
+                        </ul>
+                    </div>
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-semibold mb-2 text-green-600">转向健康饮食的益处</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 代谢综合征风险降低：HR 0.85（95% CI: 0.75-0.97）</li>
+                            <li>• HDL胆固醇升高：平均+3.5 mg/dl（P < 0.001）</li>
+                            <li>• 微生物多样性增加（Shannon指数+0.12）</li>
+                            <li>• 炎症标志物降低</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+                        <div class="subsection">
+                <h3 class="text-xl font-bold mb-4">运动与身体活动的影响</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <p class="mb-4">
+                        通过可穿戴设备和详细的运动问卷，研究分析了身体活动水平与健康结果的关系：
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="stat-card">
+                            <p class="text-lg font-semibold">低活动组</p>
+                            <p class="text-2xl font-bold text-[#E07A5F]">< 150</p>
+                            <p class="text-sm text-gray-600">分钟/周</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="text-lg font-semibold">中等活动组</p>
+                            <p class="text-2xl font-bold text-[#F2CC8F]">150-300</p>
+                            <p class="text-sm text-gray-600">分钟/周</p>
+                        </div>
+                        <div class="stat-card">
+                            <p class="text-lg font-semibold">高活动组</p>
+                            <p class="text-2xl font-bold text-[#81B29A]">> 300</p>
+                            <p class="text-sm text-gray-600">分钟/周</p>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 class="font-semibold mb-2">运动的多维度健康效应</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>心血管健康：高活动组静息心率平均低8 bpm（P < 0.001）</li>
+                            <li>代谢健康：胰岛素敏感性提高23%（P < 0.001）</li>
+                            <li>免疫功能：炎症标志物IL-6降低18%（P = 0.002）</li>
+                            <li>认知功能：执行功能测试得分提高15%（P < 0.001）</li>
+                            <li>睡眠质量：深度睡眠时间增加12%（P = 0.001）</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2.7 基础AI模型 -->
+        <section id="ai" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">2.7 基于整合数据的基础多模态AI模型</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">AI模型架构</h3>
+                <p class="mb-4">
+                    基于HPP的大规模多模态数据，研究团队开发了一系列基础AI模型，能够处理和整合临床、分子、成像和传感器数据，为个性化医疗提供强大的预测能力。
+                </p>
+                
+                <div class="ai-model-card">
+                    <h4 class="text-xl font-bold mb-3">HPP-Foundation Model</h4>
+                    <p class="text-sm mb-4 opacity-90">
+                        基于Transformer架构的多模态基础模型，训练数据包含650M+数据点，涵盖13,072名参与者的完整表型谱。
+                    </p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="performance-metric">
+                            <p class="text-xs opacity-75">参数量</p>
+                            <p class="text-lg font-bold">2.3B</p>
+                        </div>
+                        <div class="performance-metric">
+                            <p class="text-xs opacity-75">训练时长</p>
+                            <p class="text-lg font-bold">720h</p>
+                        </div>
+                        <div class="performance-metric">
+                            <p class="text-xs opacity-75">数据模态</p>
+                            <p class="text-lg font-bold">12种</p>
+                        </div>
+                        <div class="performance-metric">
+                            <p class="text-xs opacity-75">预测任务</p>
+                            <p class="text-lg font-bold">156个</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="figure-container">
+                <h4 class="font-bold mb-3">图7：AI模型性能评估</h4>
+                <div class="flex justify-center space-x-2 mb-4">
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-task="disease">疾病预测</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-task="biomarker">生物标志物预测</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-task="aging">衰老评估</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm" data-task="lifestyle">生活方式推荐</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="aiPerformanceChart"></canvas>
+                </div>
+                <p class="figure-caption">
+                    图7. HPP基础AI模型在不同预测任务上的性能表现。模型在疾病风险预测、生物标志物估计和个性化干预推荐方面均显示出优异性能。
+                </p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">关键AI应用</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-semibold mb-2 text-[#81B29A]">疾病风险预测</h4>
+                        <ul class="text-sm space-y-2">
+                            <li class="flex justify-between">
+                                <span>心血管疾病（5年）：</span>
+                                <span class="font-mono">AUC 0.89</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>2型糖尿病（3年）：</span>
+                                <span class="font-mono">AUC 0.86</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>癌症风险（10年）：</span>
+                                <span class="font-mono">AUC 0.82</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>认知衰退（5年）：</span>
+                                <span class="font-mono">AUC 0.84</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-semibold mb-2 text-[#F2CC8F]">生物年龄预测</h4>
+                        <ul class="text-sm space-y-2">
+                            <li class="flex justify-between">
+                                <span>多组学年龄：</span>
+                                <span class="font-mono">R² 0.91</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>心血管年龄：</span>
+                                <span class="font-mono">R² 0.87</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>免疫年龄：</span>
+                                <span class="font-mono">R² 0.83</span>
+                            </li>
+                            <li class="flex justify-between">
+                                <span>代谢年龄：</span>
+                                <span class="font-mono">R² 0.89</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="highlight-box mt-6">
+                    <h4 class="font-semibold mb-2">个性化干预推荐系统</h4>
+                    <p class="text-sm mb-2">
+                        AI模型能够基于个体的多模态数据提供精准的健康干预建议：
+                    </p>
+                    <ul class="list-disc list-inside text-sm space-y-1">
+                        <li><strong>营养干预</strong>：基于代谢组和微生物组数据的个性化饮食方案</li>
+                        <li><strong>运动处方</strong>：结合心血管健康和肌肉骨骼状态的运动建议</li>
+                        <li><strong>睡眠优化</strong>：基于睡眠监测数据的个性化睡眠改善策略</li>
+                        <li><strong>压力管理</strong>：结合心理评估和生理指标的压力缓解方案</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="subsection">
+                <h3 class="text-xl font-bold mb-4">模型验证与泛化能力</h3>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <p class="mb-4">
+                        为确保模型的可靠性和泛化能力，研究团队进行了严格的验证：
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-semibold mb-2">内部验证</h4>
+                            <p class="text-2xl font-bold text-[#81B29A]">85.3%</p>
+                            <p class="text-xs text-gray-600">平均准确率</p>
+                        </div>
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-semibold mb-2">外部验证</h4>
+                            <p class="text-2xl font-bold text-[#F2CC8F]">78.9%</p>
+                            <p class="text-xs text-gray-600">独立队列验证</p>
+                        </div>
+                        <div class="text-center p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-semibold mb-2">时间验证</h4>
+                            <p class="text-2xl font-bold text-[#E07A5F]">82.1%</p>
+                            <p class="text-xs text-gray-600">纵向预测准确率</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 讨论 -->
+        <section id="discussion" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">3. 讨论</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">研究的重要意义</h3>
+                <p class="text-lg leading-relaxed mb-4">
+                    人类表型项目代表了精准医疗领域的一个重要里程碑。通过对健康-疾病连续体的深度表型分析，本研究为理解人类健康的复杂性提供了前所未有的洞察。
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="info-box">
+                        <h4 class="font-semibold mb-2">科学贡献</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>建立了迄今为止最全面的人类健康数据库</li>
+                            <li>揭示了种族、年龄和生活方式对健康的复杂影响</li>
+                            <li>开发了新一代多模态AI健康预测模型</li>
+                            <li>为个性化医疗提供了强有力的数据支撑</li>
+                        </ul>
+                    </div>
+                    <div class="info-box">
+                        <h4 class="font-semibold mb-2">临床应用前景</h4>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>早期疾病风险识别和预防</li>
+                            <li>个性化治疗方案制定</li>
+                            <li>健康生活方式指导</li>
+                            <li>药物研发和临床试验优化</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">关键发现的讨论</h3>
+                
+                <div class="subsection">
+                    <h4 class="text-lg font-semibold mb-3">健康-疾病连续体的新认识</h4>
+                    <p class="mb-3">
+                        本研究最重要的发现之一是健康与疾病之间并非二元对立，而是存在一个连续的谱系。通过多组学数据的整合分析，我们识别出了多个中间状态，这些状态可能代表疾病发展的早期阶段或亚临床状态。
+                    </p>
+                    <div class="highlight-box">
+                        <p class="text-sm">
+                            <strong>临床意义：</strong>这一发现为疾病的早期干预提供了新的机会窗口。通过识别处于中间状态的个体，可以实施针对性的预防措施，阻止疾病的进一步发展。
+                        </p>
+                    </div>
+                </div>
+
+                                <div class="subsection">
+                    <h4 class="text-lg font-semibold mb-3">个体差异与精准医疗</h4>
+                    <p class="mb-3">
+                        研究揭示了个体间在分子水平上的巨大差异，即使在表型相似的人群中也存在显著的生物学变异。这种个体差异不仅体现在遗传层面，更重要的是在表观遗传、转录组、蛋白质组和代谢组水平上。
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="border rounded-lg p-4">
+                            <h5 class="font-semibold mb-2">分子指纹的独特性</h5>
+                            <ul class="text-sm space-y-1">
+                                <li>• 每个个体都有独特的多组学特征</li>
+                                <li>• 87%的分子标志物在个体间存在显著差异</li>
+                                <li>• 微生物组的个体特异性最为显著</li>
+                                <li>• 代谢组在时间上相对稳定</li>
+                            </ul>
+                        </div>
+                        <div class="border rounded-lg p-4">
+                            <h5 class="font-semibold mb-2">治疗反应的预测</h5>
+                            <ul class="text-sm space-y-1">
+                                <li>• 基于多组学数据可预测药物反应</li>
+                                <li>• 生活方式干预效果因人而异</li>
+                                <li>• 个体化剂量调整的必要性</li>
+                                <li>• 副作用风险的个体化评估</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="subsection">
+                    <h4 class="text-lg font-semibold mb-3">生活方式因素的重要性</h4>
+                    <p class="mb-3">
+                        研究强调了生活方式因素在健康维护中的核心作用。与遗传因素相比，饮食、运动、睡眠等可调节因素对健康结果的影响更为直接和可控。
+                    </p>
+                    <div class="info-box">
+                        <h5 class="font-semibold mb-2">生活方式干预的量化效应</h5>
+                        <ul class="list-disc list-inside text-sm space-y-1">
+                            <li>健康饮食模式可将心血管疾病风险降低32%</li>
+                            <li>规律运动对代谢健康的改善效果在2-4周内即可观察到</li>
+                            <li>良好睡眠质量与免疫功能呈强正相关（r=0.67）</li>
+                            <li>压力管理技能可显著降低炎症标志物水平</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">研究局限性与未来方向</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="border-l-4 border-orange-400 pl-4">
+                        <h4 class="font-semibold mb-2 text-orange-600">当前局限性</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 队列主要来自以色列人群，种族代表性有限</li>
+                            <li>• 纵向随访时间相对较短（平均3.2年）</li>
+                            <li>• 某些罕见疾病的样本量不足</li>
+                            <li>• 环境暴露数据收集不够全面</li>
+                            <li>• AI模型的可解释性仍需改进</li>
+                        </ul>
+                    </div>
+                    <div class="border-l-4 border-blue-400 pl-4">
+                        <h4 class="font-semibold mb-2 text-blue-600">未来发展方向</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 扩展至更多种族和地理区域</li>
+                            <li>• 延长随访时间至25年</li>
+                            <li>• 整合更多环境和社会因素</li>
+                            <li>• 开发实时健康监测系统</li>
+                            <li>• 建立全球健康数据共享平台</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">对精准医疗的影响</h3>
+                <p class="mb-4">
+                    HPP研究为精准医疗的实施提供了重要的理论基础和技术支撑。通过建立个体化的健康基线和风险评估模型，可以实现真正意义上的个性化医疗服务。
+                </p>
+                
+                <div class="highlight-box">
+                    <h4 class="font-semibold mb-2">精准医疗的实现路径</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <span class="text-2xl">🔬</span>
+                            </div>
+                            <h5 class="font-semibold text-sm">深度表型分析</h5>
+                            <p class="text-xs text-gray-600 mt-1">多组学数据整合</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <span class="text-2xl">🤖</span>
+                            </div>
+                            <h5 class="font-semibold text-sm">AI驱动预测</h5>
+                            <p class="text-xs text-gray-600 mt-1">个性化风险评估</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <span class="text-2xl">💊</span>
+                            </div>
+                            <h5 class="font-semibold text-sm">精准干预</h5>
+                            <p class="text-xs text-gray-600 mt-1">个体化治疗方案</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. 方法 -->
+        <section id="methods" class="content-section">
+            <h2 class="text-3xl font-bold mb-6">4. 方法</h2>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">研究设计与参与者招募</h3>
+                <p class="mb-4">
+                    HPP采用前瞻性队列研究设计，通过多渠道招募健康成年人参与。研究获得了魏茨曼科学研究所伦理委员会的批准，所有参与者均签署知情同意书。
+                </p>
+                
+                <div class="method-section">
+                    <h4 class="font-semibold mb-2">纳入标准</h4>
+                    <ul class="text-sm space-y-1">
+                        <li>• 年龄18-89岁的健康成年人</li>
+                        <li>• 能够理解并签署知情同意书</li>
+                        <li>• 愿意参与长期随访</li>
+                        <li>• 居住在研究中心50公里范围内</li>
+                    </ul>
+                </div>
+
+                <div class="method-section">
+                    <h4 class="font-semibold mb-2">排除标准</h4>
+                    <ul class="text-sm space-y-1">
+                        <li>• 严重急性或慢性疾病</li>
+                        <li>• 妊娠或哺乳期女性</li>
+                        <li>• 近期使用抗生素（4周内）</li>
+                        <li>• 无法配合研究程序</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">数据收集方法</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">临床评估</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 标准化体格检查</li>
+                            <li>• 详细病史采集</li>
+                            <li>• 人体测量学指标</li>
+                            <li>• 生命体征监测</li>
+                            <li>• 认知功能评估</li>
+                        </ul>
+                    </div>
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">实验室检测</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 常规生化指标（58项）</li>
+                            <li>• 激素水平检测</li>
+                            <li>• 炎症标志物</li>
+                            <li>• 维生素和微量元素</li>
+                            <li>• 免疫功能指标</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h3 class="text-xl font-bold mb-4">多组学分析方法</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">基因组学</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 全基因组SNP分型</li>
+                            <li>• 拷贝数变异检测</li>
+                            <li>• 药物基因组学分析</li>
+                        </ul>
+                    </div>
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">转录组学</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• RNA-seq分析</li>
+                            <li>• 差异表达基因识别</li>
+                            <li>• 通路富集分析</li>
+                        </ul>
+                    </div>
+                    <div class="method-section">
+                        <h4 class="font-semibold mb-2">微生物组</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>• 16S rRNA测序</li>
+                            <li>• 宏基因组测序</li>
+                            <li>• 功能基因预测</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">统计分析与AI模型开发</h3>
+                
+                <div class="method-section">
+                    <h4 class="font-semibold mb-2">统计方法</h4>
+                    <p class="text-sm mb-2">
+                        采用R 4.2.0和Python 3.9进行统计分析。连续变量用均数±标准差表示，分类变量用频数和百分比表示。组间比较采用t检验或Mann-Whitney U检验，多组比较采用ANOVA或Kruskal-Wallis检验。
+                    </p>
+                </div>
+
+                <div class="method-section">
+                    <h4 class="font-semibold mb-2">机器学习方法</h4>
+                    <ul class="text-sm space-y-1">
+                        <li>• 随机森林用于特征选择</li>
+                        <li>• 支持向量机用于分类任务</li>
+                        <li>• 深度神经网络用于复杂模式识别</li>
+                        <li>• Transformer架构用于多模态数据整合</li>
+                        <li>• 交叉验证确保模型泛化能力</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // 导航功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const sections = document.querySelectorAll('.content-section');
+            
+            // 默认显示第一个section
+            if (sections.length > 0) {
+                sections[0].classList.add('active');
+                navLinks[0].classList.add('active');
+            }
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // 移除所有active类
+                    navLinks.forEach(l => l.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+                    
+                    // 添加active类到当前链接
+                    this.classList.add('active');
+                    
+                    // 显示对应的section
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetSection = document.getElementById(targetId);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                    }
+                });
+            });
+
+                        // 数字动画效果
+            function animateNumbers() {
+                const participantsStat = document.getElementById('participants-stat');
+                const visitsStat = document.getElementById('visits-stat');
+                const datapointsStat = document.getElementById('datapoints-stat');
+                
+                if (participantsStat) animateNumber(participantsStat, 27916, 2000);
+                if (visitsStat) animateNumber(visitsStat, 13072, 2000);
+                if (datapointsStat) animateNumber(datapointsStat, 650, 2000);
+            }
+            
+            function animateNumber(element, target, duration) {
+                let start = 0;
+                const increment = target / (duration / 16);
+                const timer = setInterval(() => {
+                    start += increment;
+                    if (start >= target) {
+                        element.textContent = target.toLocaleString();
+                        clearInterval(timer);
+                    } else {
+                        element.textContent = Math.floor(start).toLocaleString();
+                    }
+                }, 16);
+            }
+            
+            // 启动数字动画
+            setTimeout(animateNumbers, 500);
+
+            // 图表初始化
+            initializeCharts();
+            
+            // 交互按钮功能
+            setupInteractiveButtons();
+        });
+
+        // 图表初始化函数
+        function initializeCharts() {
+            // 数据收集概览图表
+            const dataCollectionCtx = document.getElementById('dataCollectionChart');
+            if (dataCollectionCtx) {
+                new Chart(dataCollectionCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['临床数据', '基因组学', '转录组学', '蛋白质组', '代谢组', '微生物组', '成像数据', '传感器数据'],
+                        datasets: [{
+                            data: [25, 15, 12, 10, 8, 12, 10, 8],
+                            backgroundColor: [
+                                '#81B29A', '#F2CC8F', '#E07A5F', '#3D405B',
+                                '#81B29A80', '#F2CC8F80', '#E07A5F80', '#3D405B80'
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 种族预测能力图表
+            const ethnicityCtx = document.getElementById('ethnicityPredictionChart');
+            if (ethnicityCtx) {
+                new Chart(ethnicityCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['遗传学', '转录组', '蛋白质组', '代谢组', '微生物组', '临床数据'],
+                        datasets: [{
+                            label: 'AUC值',
+                            data: [0.92, 0.78, 0.72, 0.68, 0.55, 0.61],
+                            backgroundColor: ['#81B29A', '#F2CC8F', '#E07A5F', '#3D405B', '#81B29A80', '#F2CC8F80'],
+                            borderColor: ['#81B29A', '#F2CC8F', '#E07A5F', '#3D405B', '#81B29A', '#F2CC8F'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1,
+                                title: {
+                                    display: true,
+                                    text: 'AUC值'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '数据模态'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 更年期骨密度图表
+            const menopauseCtx = document.getElementById('menopauseBMDChart');
+            if (menopauseCtx) {
+                // 生成模拟数据
+                const menopauseData = [];
+                for (let i = -10; i <= 20; i++) {
+                    menopauseData.push({
+                        x: i,
+                        y: 1.2 - (i * 0.015) + (Math.random() - 0.5) * 0.1
+                    });
+                }
+
+                new Chart(menopauseCtx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: '骨密度 (g/cm²)',
+                            data: menopauseData,
+                            backgroundColor: '#81B29A',
+                            borderColor: '#81B29A',
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: '距离更年期时间 (年)'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '骨密度 (g/cm²)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 微生物组图表
+            const microbiomeCtx = document.getElementById('microbiomeChart');
+            if (microbiomeCtx) {
+                window.microbiomeChart = new Chart(microbiomeCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Faecalibacterium', 'Fusicatenibacter', 'Bifidobacterium', 'Lactobacillus', 'Bacteroides'],
+                        datasets: [{
+                            label: '患者组',
+                            data: [0.037, 0.006, 0.025, 0.018, 0.045],
+                            backgroundColor: '#E07A5F',
+                            borderColor: '#E07A5F',
+                            borderWidth: 1
+                        }, {
+                            label: '对照组',
+                            data: [0.045, 0.004, 0.032, 0.024, 0.038],
+                            backgroundColor: '#81B29A',
+                            borderColor: '#81B29A',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: '相对丰度'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // AI性能图表
+            const aiCtx = document.getElementById('aiPerformanceChart');
+            if (aiCtx) {
+                window.aiPerformanceChart = new Chart(aiCtx, {
+                    type: 'radar',
+                    data: {
+                        labels: ['心血管疾病', '糖尿病', '癌症', '神经退行性疾病', '代谢综合征', '免疫疾病'],
+                        datasets: [{
+                            label: 'HPP-AI模型',
+                            data: [0.89, 0.86, 0.82, 0.84, 0.88, 0.81],
+                            backgroundColor: 'rgba(129, 178, 154, 0.2)',
+                            borderColor: '#81B29A',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#81B29A'
+                        }, {
+                            label: '传统模型',
+                            data: [0.75, 0.72, 0.68, 0.70, 0.74, 0.67],
+                            backgroundColor: 'rgba(224, 122, 95, 0.2)',
+                            borderColor: '#E07A5F',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#E07A5F'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 1,
+                                ticks: {
+                                    stepSize: 0.2
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // 交互按钮设置
+        function setupInteractiveButtons() {
+            // 种族预测按钮
+            const modalityButtons = document.querySelectorAll('[data-modality]');
+            modalityButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    modalityButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    // 这里可以添加更新图表的逻辑
+                });
+            });
+
+            // 饮食模式按钮
+            const dietButtons = document.querySelectorAll('[data-diet]');
+            dietButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    dietButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateHealthOutcomes(this.dataset.diet);
+                });
+            });
+
+            // 疾病选择器
+            const diseaseSelector = document.getElementById('disease-selector');
+            if (diseaseSelector) {
+                diseaseSelector.addEventListener('change', function() {
+                    updateMicrobiomeChart(this.value);
+                });
+            }
+
+            // AI任务按钮
+            const taskButtons = document.querySelectorAll('[data-task]');
+            taskButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    taskButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateAIChart(this.dataset.task);
+                });
+            });
+        }
+
+        // 更新健康结果显示
+        function updateHealthOutcomes(dietType) {
+            const grid = document.getElementById('health-outcomes-grid');
+            if (!grid) return;
+
+            const outcomes = {
+                upf: [
+                    { name: 'BMI', value: '+0.8', type: 'negative' },
+                    { name: '血压', value: '+3.2 mmHg', type: 'negative' },
+                    { name: 'CRP', value: '+25%', type: 'negative' },
+                    { name: '胰岛素抵抗', value: '+18%', type: 'negative' }
+                ],
+                mediterranean: [
+                    { name: 'HDL胆固醇', value: '+3.5 mg/dl', type: 'positive' },
+                    { name: '炎症标志物', value: '-15%', type: 'positive' },
+                    { name: '认知功能', value: '+12%', type: 'positive' },
+                    { name: '心血管风险', value: '-23%', type: 'positive' }
+                ],
+                plant: [
+                    { name: '纤维摄入', value: '+45%', type: 'positive' },
+                    { name: '微生物多样性', value: '+0.12', type: 'positive' },
+                    { name: '环境影响', value: '-30%', type: 'positive' },
+                    { name: '慢性病风险', value: '-19%', type: 'positive' }
+                ]
+            };
+
+            const currentOutcomes = outcomes[dietType] || outcomes.upf;
+            
+            grid.innerHTML = currentOutcomes.map(outcome => `
+                <div class="health-outcome-card ${outcome.type} bg-white p-4 rounded-lg text-center">
+                    <h4 class="font-semibold text-sm mb-2">${outcome.name}</h4>
+                    <p class="text-lg font-bold ${outcome.type === 'positive' ? 'text-green-600' : 'text-red-600'}">${outcome.value}</p>
+                </div>
+            `).join('');
+        }
+
+        // 更新微生物组图表
+        function updateMicrobiomeChart(disease) {
+            if (!window.microbiomeChart) return;
+
+            const data = {
+                bc: {
+                    labels: ['Faecalibacterium', 'Fusicatenibacter', 'Bifidobacterium', 'Lactobacillus', 'Bacteroides'],
+                    patients: [0.037, 0.006, 0.025, 0.018, 0.045],
+                    controls: [0.045, 0.004, 0.032, 0.024, 0.038]
+                },
+                ibd: {
+                    labels: ['Ruminococcus gnavus', 'Escherichia coli', 'Faecalibacterium', 'Bifidobacterium', 'Akkermansia'],
+                    patients: [0.02, 0.01, 0.025, 0.015, 0.008],
+                    controls: [0.0001, 0.001, 0.045, 0.032, 0.018]
+                },
+                endometriosis: {
+                    labels: ['Flavonifractor', 'Oscillibacter', 'Prevotella', 'Bacteroides', 'Clostridium'],
+                    patients: [0.001, 0.0006, 0.035, 0.042, 0.028],
+                    controls: [0.0004, 0.02, 0.028, 0.038, 0.025]
+                }
+            };
+
+            const currentData = data[disease];
+            window.microbiomeChart.data.labels = currentData.labels;
+            window.microbiomeChart.data.datasets[0].data = currentData.patients;
+            window.microbiomeChart.data.datasets[1].data = currentData.controls;
+            window.microbiomeChart.update();
+        }
+
+        // 更新AI图表
+        function updateAIChart(task) {
+            if (!window.aiPerformanceChart) return;
+
+            const data = {
+                disease: {
+                    labels: ['心血管疾病', '糖尿病', '癌症', '神经退行性疾病', '代谢综合征', '免疫疾病'],
+                    hppModel: [0.89, 0.86, 0.82, 0.84, 0.88, 0.81],
+                    traditional: [0.75, 0.72, 0.68, 0.70, 0.74, 0.67]
+                },
+                biomarker: {
+                    labels: ['血糖', '血脂', '炎症标志物', '激素水平', '维生素', '微量元素'],
+                                        hppModel: [0.91, 0.87, 0.83, 0.85, 0.79, 0.82],
+                    traditional: [0.78, 0.74, 0.71, 0.73, 0.68, 0.70]
+                },
+                aging: {
+                    labels: ['心血管年龄', '代谢年龄', '免疫年龄', '认知年龄', '肌肉年龄', '骨骼年龄'],
+                    hppModel: [0.87, 0.89, 0.83, 0.84, 0.81, 0.86],
+                    traditional: [0.72, 0.75, 0.69, 0.71, 0.68, 0.73]
+                },
+                lifestyle: {
+                    labels: ['饮食推荐', '运动处方', '睡眠优化', '压力管理', '社交活动', '环境调节'],
+                    hppModel: [0.85, 0.88, 0.82, 0.79, 0.76, 0.81],
+                    traditional: [0.68, 0.71, 0.65, 0.62, 0.59, 0.64]
+                }
+            };
+
+            const currentData = data[task];
+            window.aiPerformanceChart.data.labels = currentData.labels;
+            window.aiPerformanceChart.data.datasets[0].data = currentData.hppModel;
+            window.aiPerformanceChart.data.datasets[1].data = currentData.traditional;
+            window.aiPerformanceChart.update();
+        }
+
+        // 初始化健康结果显示
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                updateHealthOutcomes('upf');
+            }, 1000);
+        });
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 响应式图表调整
+        window.addEventListener('resize', function() {
+            Chart.helpers.each(Chart.instances, function(instance) {
+                instance.resize();
+            });
+        });
+
+        // 数据加载动画
+        function showLoadingAnimation(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.opacity = '0.5';
+                element.style.transition = 'opacity 0.3s ease';
+                
+                setTimeout(() => {
+                    element.style.opacity = '1';
+                }, 500);
+            }
+        }
+
+        // 工具提示功能
+        function initializeTooltips() {
+            const tooltipElements = document.querySelectorAll('[data-tooltip]');
+            tooltipElements.forEach(element => {
+                element.addEventListener('mouseenter', function() {
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'absolute bg-gray-800 text-white text-xs rounded py-1 px-2 z-50';
+                    tooltip.textContent = this.getAttribute('data-tooltip');
+                    tooltip.style.top = this.offsetTop - 30 + 'px';
+                    tooltip.style.left = this.offsetLeft + 'px';
+                    this.parentNode.appendChild(tooltip);
+                });
+                
+                element.addEventListener('mouseleave', function() {
+                    const tooltip = this.parentNode.querySelector('.absolute.bg-gray-800');
+                    if (tooltip) {
+                        tooltip.remove();
+                    }
+                });
+            });
+        }
+
+        // 打印功能
+        function printReport() {
+            window.print();
+        }
+
+        // 导出功能
+        function exportData(format) {
+            if (format === 'pdf') {
+                window.print();
+            } else if (format === 'csv') {
+                // 这里可以添加CSV导出逻辑
+                console.log('导出CSV格式');
+            }
+        }
+
+        // 搜索功能
+        function searchContent(query) {
+            const sections = document.querySelectorAll('.content-section');
+            const results = [];
+            
+            sections.forEach(section => {
+                const text = section.textContent.toLowerCase();
+                if (text.includes(query.toLowerCase())) {
+                    results.push(section.id);
+                }
+            });
+            
+            return results;
+        }
+
+        // 主题切换功能
+        function toggleTheme() {
+            const body = document.body;
+            const isDark = body.classList.contains('dark-theme');
+            
+            if (isDark) {
+                body.classList.remove('dark-theme');
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark-theme');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // 加载保存的主题
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+            }
+        });
+
+        // 进度指示器
+        function updateProgressIndicator() {
+            const sections = document.querySelectorAll('.content-section');
+            const activeSection = document.querySelector('.content-section.active');
+            
+            if (activeSection) {
+                const index = Array.from(sections).indexOf(activeSection);
+                const progress = ((index + 1) / sections.length) * 100;
+                
+                const progressBar = document.getElementById('progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+            }
+        }
+
+        // 自动保存阅读进度
+        function saveReadingProgress() {
+            const activeSection = document.querySelector('.content-section.active');
+            if (activeSection) {
+                localStorage.setItem('lastSection', activeSection.id);
+            }
+        }
+
+        // 恢复阅读进度
+        function restoreReadingProgress() {
+            const lastSection = localStorage.getItem('lastSection');
+            if (lastSection) {
+                const section = document.getElementById(lastSection);
+                const navLink = document.querySelector(`[href="#${lastSection}"]`);
+                
+                if (section && navLink) {
+                    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    
+                    section.classList.add('active');
+                    navLink.classList.add('active');
+                }
+            }
+        }
+
+        // 键盘导航
+        document.addEventListener('keydown', function(e) {
+            const sections = document.querySelectorAll('.content-section');
+            const activeSection = document.querySelector('.content-section.active');
+            
+            if (activeSection) {
+                const currentIndex = Array.from(sections).indexOf(activeSection);
+                
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const nextIndex = Math.min(currentIndex + 1, sections.length - 1);
+                    const nextSection = sections[nextIndex];
+                    const nextNavLink = document.querySelector(`[href="#${nextSection.id}"]`);
+                    
+                    if (nextNavLink) {
+                        nextNavLink.click();
+                    }
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prevIndex = Math.max(currentIndex - 1, 0);
+                    const prevSection = sections[prevIndex];
+                    const prevNavLink = document.querySelector(`[href="#${prevSection.id}"]`);
+                    
+                    if (prevNavLink) {
+                        prevNavLink.click();
+                    }
+                }
+            }
+        });
+
+        // 页面可见性API - 自动暂停/恢复动画
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // 页面不可见时暂停动画
+                document.querySelectorAll('.chart-container canvas').forEach(canvas => {
+                    const chart = Chart.getChart(canvas);
+                    if (chart) {
+                        chart.stop();
+                    }
+                });
+            } else {
+                // 页面可见时恢复动画
+                document.querySelectorAll('.chart-container canvas').forEach(canvas => {
+                    const chart = Chart.getChart(canvas);
+                    if (chart) {
+                        chart.render();
+                    }
+                });
+            }
+        });
+
+        // 性能监控
+        function monitorPerformance() {
+            if ('performance' in window) {
+                window.addEventListener('load', function() {
+                    setTimeout(function() {
+                        const perfData = performance.getEntriesByType('navigation')[0];
+                        console.log('页面加载时间:', perfData.loadEventEnd - perfData.loadEventStart, 'ms');
+                    }, 0);
+                });
+            }
+        }
+
+        // 错误处理
+        window.addEventListener('error', function(e) {
+            console.error('页面错误:', e.error);
+            // 这里可以添加错误报告逻辑
+        });
+
+        // 初始化所有功能
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeTooltips();
+            restoreReadingProgress();
+            monitorPerformance();
+            
+            // 定期保存阅读进度
+            setInterval(saveReadingProgress, 5000);
+        });
+    </script>
+
+    <!-- 添加一些额外的样式 -->
+    <style>
+        /* 暗色主题 */
+        .dark-theme {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        
+        .dark-theme .bg-white {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0;
+        }
+        
+        .dark-theme .nav-link.active {
+            background-color: #3a3a3a;
+            color: #81B29A;
+        }
+        
+        .dark-theme .stat-card {
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+        }
+        
+        /* 打印样式 */
+        @media print {
+            .nav-link, nav {
+                display: none !important;
+            }
+            
+            main {
+                margin-left: 0 !important;
+            }
+            
+            .content-section {
+                display: block !important;
+                page-break-after: always;
+            }
+            
+            .chart-container {
+                height: 300px !important;
+            }
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+            
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading {
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #81B29A;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6a9d7a;
+        }
+        
+        /* 焦点样式 */
+        .nav-link:focus,
+        .interactive-btn:focus {
+            outline: 2px solid #81B29A;
+            outline-offset: 2px;
+        }
+        
+        /* 动画效果 */
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .content-section.active {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        /* 高亮效果 */
+        .highlight {
+            background-color: #FEF3C7;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        /* 引用样式 */
+        blockquote {
+            border-left: 4px solid #81B29A;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            font-style: italic;
+            background-color: #f8f9fa;
+        }
+    </style>
+</body>
+</html>
