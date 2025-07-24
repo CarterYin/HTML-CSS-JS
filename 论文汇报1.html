@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人类表型项目 (HPP) | 交互式报告</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Harmony -->
+    <!-- Application Structure Plan: A thematic, non-linear dashboard SPA. A fixed sidebar navigation allows users to select key research themes (Project Overview, Ethnicity, Aging, Lifestyle, Microbiome, AI Future). The main content area dynamically displays interactive charts and concise text for the selected theme. This structure transforms the dense report into an explorable, user-friendly experience, prioritizing understanding and engagement over a linear document flow. -->
+    <!-- Visualization & Content Choices: The application uses Chart.js for all visualizations to maintain consistency and interactivity, avoiding SVG/Mermaid as required. Key findings are presented as follows: 1) **Project Overview**: Dynamic counters for engagement and detailed data collection methods. 2) **Ethnicity**: An interactive bar chart to compare the predictive power (AUC) of different data modalities, supplemented with specific ethnic group counts and PCA findings. 3) **Aging**: Side-by-side cards with dynamic text and a line chart to compare biological vs. chronological age effects, now including specific clinical metric values and new sections for longitudinal stability and microbial strain sharing. 4) **Microbiome**: A dropdown-controlled bar chart to show disease-specific bacterial signatures, updated with precise relative abundance values and brief explanations for each bacterium. 5) **Lifestyle**: A grid of cards with color-coded highlights to show diet-health correlations, now populated with more specific health outcomes and a dynamic text area for detailed findings, plus a section on longitudinal dietary shifts. 6) **AI Future**: A clear HTML/CSS diagram to explain the 'digital twin' concept, enhanced with more technical details for COMPRER and GluFormer models. This approach selects the best interactive method for each data story, enhancing clarity and user exploration. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #F8F7F4;
+            color: #3D405B;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        .nav-link.active {
+            background-color: #EAE7E1;
+            border-left-color: #81B29A;
+            color: #3D405B;
+            font-weight: 500;
+        }
+        .nav-link:hover {
+            background-color: #EAE7E1;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-card {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            text-align: center;
+        }
+        .interactive-btn {
+            transition: all 0.2s ease;
+        }
+        .interactive-btn.active {
+            background-color: #81B29A;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .health-outcome-card {
+            transition: all 0.3s ease;
+            border: 1px solid #EAE7E1;
+        }
+        .health-outcome-card.positive {
+            border-color: #81B29A;
+            box-shadow: 0 0 15px rgba(129, 178, 154, 0.3);
+            transform: translateY(-2px);
+        }
+        .health-outcome-card.negative {
+            border-color: #E07A5F;
+            box-shadow: 0 0 15px rgba(224, 122, 95, 0.3);
+            transform: translateY(-2px);
+        }
+        .info-box {
+            background-color: #F8F7F4;
+            border-left: 4px solid #81B29A;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row min-h-screen">
+
+    <nav class="w-full md:w-64 bg-white border-r border-gray-200 p-4 md:fixed md:h-full">
+        <div class="flex items-center mb-8">
+            <div class="w-10 h-10 bg-gradient-to-br from-[#81B29A] to-[#F2CC8F] rounded-full mr-3"></div>
+            <h1 class="text-xl font-bold text-[#3D405B]">HPP 报告</h1>
+        </div>
+        <ul>
+            <li><a href="#overview" class="nav-link block p-3 rounded-lg mb-2">项目概览</a></li>
+            <li><a href="#ethnicity" class="nav-link block p-3 rounded-lg mb-2">种族与健康</a></li>
+            <li><a href="#aging" class="nav-link block p-3 rounded-lg mb-2">衰老的生物学</a></li>
+            <li><a href="#microbiome" class="nav-link block p-3 rounded-lg mb-2">微生物组与疾病</a></li>
+            <li><a href="#lifestyle" class="nav-link block p-3 rounded-lg mb-2">生活方式的影响</a></li>
+            <li><a href="#ai" class="nav-link block p-3 rounded-lg mb-2">AI与未来展望</a></li>
+        </ul>
+        <div class="absolute bottom-4 text-xs text-gray-400">
+            <p>&copy; 2025 HPP 交互式报告</p>
+            <p>数据驱动的健康洞察</p>
+        </div>
+    </nav>
+
+    <main class="flex-1 md:ml-64 p-6 sm:p-8 lg:p-12">
+        
+        <section id="overview" class="content-section">
+            <h2 class="text-3xl font-bold mb-2">项目概览：解码健康-疾病连续体</h2>
+            <p class="text-lg text-gray-600 mb-8">人类表型项目 (HPP) 是一项大规模、前瞻性的深度表型研究，旨在通过整合多维度数据，识别新型分子标记，并开发AI预测模型，推动精准医疗的发展。</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div class="stat-card">
+                    <p class="text-4xl font-bold text-[#81B29A]" id="participants-stat">0</p>
+                    <p class="text-gray-500 mt-2">注册参与者</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-4xl font-bold text-[#F2CC8F]" id="visits-stat">0</p>
+                    <p class="text-gray-500 mt-2">完成首次访视</p>
+                </div>
+                <div class="stat-card">
+                    <p class="text-4xl font-bold text-[#E07A5F]" id="followup-stat">0</p>
+                    <p class="text-gray-500 mt-2">计划随访年限</p>
+                </div>
+                <div class="stat-card md:col-span-3">
+                    <p class="text-2xl font-bold text-[#3D405B]" id="meals-logged-stat">0</p>
+                    <p class="text-gray-500 mt-2">已记录餐次 (平均每位参与者234.5餐)</p>
+                </div>
+            </div>
+
+            <h3 class="text-2xl font-bold mb-4">多维度数据收集</h3>
+            <p class="mb-6 text-gray-600">HPP采用多源输入，进行广泛的纵向数据收集，构建了前所未有的健康数据库。这为理解复杂的健康问题提供了坚实的基础。</p>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <span class="text-3xl">🩺</span>
+                        <h4 class="font-semibold mt-2">临床数据</h4>
+                        <p class="text-xs text-gray-500">病史, 人体测量, 影像学, 心血管功能, 眼底检查, 握力测量, 语音记录</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <span class="text-3xl">🧬</span>
+                        <h4 class="font-semibold mt-2">多组学数据</h4>
+                        <p class="text-xs text-gray-500">遗传, 转录组, 蛋白质组, 代谢组, 微生物组 (肠道, 口腔, 阴道), 免疫分析</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <span class="text-3xl">🏃</span>
+                        <h4 class="font-semibold mt-2">生活方式</h4>
+                        <p class="text-xs text-gray-500">饮食 (实时记录), 运动, 久坐, 吸烟, 压力, 社会健康, 睡眠 (WatchPAT300)</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <span class="text-3xl">📈</span>
+                        <h4 class="font-semibold mt-2">连续监测</h4>
+                        <p class="text-xs text-gray-500">血糖(CGM, Freestyle Libre Pro 2), 睡眠呼吸暂停 (家用设备)</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-500 mt-6">HPP计划进行25年的纵向随访，包括年度问卷和两年一次的研究中心访视，并整合电子健康记录 (EHRs) 数据。迄今为止，5,800名参与者已完成第二年随访，356人退出，10人去世。</p>
+            </div>
+        </section>
+
+        <section id="ethnicity" class="content-section">
+            <h2 class="text-3xl font-bold mb-2">种族与健康：多样性的力量</h2>
+            <p class="text-lg text-gray-600 mb-8">HPP的关键优势之一是其广泛的种族多样性，这有助于确保研究结果的普适性。不同数据模态在预测族群方面的能力差异，揭示了遗传和环境对健康的复杂影响。</p>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h3 class="text-xl font-bold mb-4 text-center">不同数据模态对族群的预测能力 (AUC)</h3>
+                 <div class="flex flex-wrap justify-center space-x-2 mb-4">
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="genetics">遗传学</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="lifestyle">生活方式</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="metabolomics">代谢组学</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium mb-2" data-modality="microbiome">微生物组</button>
+                </div>
+                <div class="chart-container mx-auto">
+                    <canvas id="ethnicityChart"></canvas>
+                </div>
+                <p class="text-center text-sm text-gray-500 mt-4" id="ethnicity-context">点击按钮查看不同数据模态的预测能力。AUC值越高，代表该数据模态区分不同族群的能力越强。</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">族群构成与研究发现</h3>
+                <p class="mb-4 text-gray-600">HPP队列通过参与者祖父母的出生国来定义族群，实现了广泛的种族多样性。主要族群构成如下：</p>
+                <ul class="list-disc list-inside text-sm text-gray-700 mb-4">
+                    <li>阿什肯纳兹犹太人 (Ashkenazi): 6,270 人 (SNP数据分析: 3,760人; 微生物组数据分析: 5,827人)</li>
+                    <li>北非人 (North African): 943 人 (SNP数据分析: 574人; 微生物组数据分析: 862人)</li>
+                    <li>中东人 (Middle Eastern): 780 人 (SNP数据分析: 480人; 微生物组数据分析: 723人)</li>
+                    <li>也门人 (Yemeni): 249 人 (SNP数据分析: 156人; 微生物组数据分析: 229人)</li>
+                    <li>塞法迪犹太人 (Sephardic): 264 人 (SNP数据分析: 176人; 微生物组数据分析: 250人)</li>
+                    <li>其他国家: 302 人 (SNP数据分析: 148人; 微生物组数据分析: 249人)</li>
+                    <li>混合族裔背景: 2,837 人 (SNP数据分析: 1,588人; 微生物组数据分析: 2,596人)</li>
+                </ul>
+                <div class="info-box">
+                    <p class="text-sm text-gray-700"><strong>关键发现:</strong></p>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <li>遗传学数据显示不同族群之间存在明显分离，但微生物组组成无分离，表明环境因素对微生物组影响大于遗传学。</li>
+                        <li>使用Mann–Whitney U检验和倾向得分匹配（按年龄、性别、BMI），比较了阿什肯纳兹犹太人组 (n=2,513) 与非阿什肯纳兹犹太人组 (n=2,510) 的表型差异。</li>
+                        <li>发现阿什肯纳兹犹太人与其他族群在饮食习惯、生活方式行为、血液检测结果和生命体征等临床参数上存在显著差异 (P ≤ 0.05)。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="aging" class="content-section">
+            <h2 class="text-3xl font-bold mb-2">衰老的生物学：超越实际年龄</h2>
+            <p class="text-lg text-gray-600 mb-8">HPP的研究揭示了生物学年龄与实际年龄的区别。加速的生物学衰老与多项不良临床指标相关，凸显了监测和干预生物学衰老过程的重要性。</p>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">生物学年龄 vs. 实际年龄：临床指标对比</h3>
+                    <p class="mb-4 text-gray-600">当一个人的预测心血管年龄或基因表达年龄高于其实际年龄时，通常伴随着一系列健康风险的增加。以下是生物学年龄预测前10%（加速衰老）与后10%（减速衰老）个体间的关键临床指标差异：</p>
+                     <div class="space-y-3">
+                        <div class="flex items-center p-3 bg-red-50 rounded-lg">
+                            <span class="text-red-500 font-bold mr-3">▲</span>
+                            <div>
+                                <p class="font-semibold">甘油三酯水平</p>
+                                <p class="text-xs text-gray-500">加速心血管衰老者: 平均 128.06 mg/dl vs 96.41 mg/dl (P < 0.001)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-3 bg-red-50 rounded-lg">
+                            <span class="text-red-500 font-bold mr-3">▲</span>
+                            <div>
+                                <p class="font-semibold">血糖水平</p>
+                                <p class="text-xs text-gray-500">加速心血管衰老者: 平均 95.75 mg/dl vs 91.94 mg/dl (P < 0.001)</p>
+                            </div>
+                        </div>
+                         <div class="flex items-center p-3 bg-red-50 rounded-lg">
+                            <span class="text-red-500 font-bold mr-3">▲</span>
+                            <div>
+                                <p class="font-semibold">糖化血红蛋白 (HbA1c)</p>
+                                <p class="text-xs text-gray-500">加速基因表达衰老者: 平均 5.53% vs 5.36% (P < 0.001)</p>
+                            </div>
+                        </div>
+                         <div class="flex items-center p-3 bg-red-50 rounded-lg">
+                            <span class="text-red-500 font-bold mr-3">▲</span>
+                            <div>
+                                <p class="font-semibold">腰围</p>
+                                <p class="text-xs text-gray-500">加速基因表达衰老者: 平均 92.19 cm vs 87.03 cm (P < 0.001)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-box mt-4">
+                        <p class="text-sm text-gray-700"><strong>年龄依赖性变异:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li><strong>pAHI (n=5,982):</strong> 队列中中度至重度阻塞性睡眠呼吸暂停 (OSA) 的人群比例介于 6.6% 至 36.4% 之间，取决于年龄和性别。</li>
+                            <li><strong>空腹血糖 (n=8,913):</strong> 男性每10年增加2.6 mg/dl，女性每10年增加2.5 mg/dl。</li>
+                            <li><strong>传统诊断挑战:</strong> CGM捕捉到显著的每日空腹血糖变异性，40%基线正常个体在连续几天内出现糖尿病前期血糖，突显连续监测的价值。</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">更年期对女性健康的影响</h3>
+                    <p class="mb-4 text-gray-600">骨密度与“距离更年期的时间”的关联性（Spearman’s ρ = −0.24, P < 0.001），比与实际年龄的关联性（Spearman’s ρ = −0.19, P < 0.001）更强，强调了更年期对女性健康的深远影响。</p>
+                    <div class="chart-container mx-auto h-64 md:h-80">
+                        <canvas id="menopauseChart"></canvas>
+                    </div>
+                    <div class="info-box mt-4">
+                        <p class="text-sm text-gray-700"><strong>生物学衰老评分的临床相关性:</strong></p>
+                        <p class="text-sm text-gray-700">胰岛素抵抗的生物学衰老评分与男性和女性糖尿病的更高优势比 (ORs) 相关 (OR分别为 1.45 和 1.42)。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">多组学和生活方式特征的纵向稳定性</h3>
+                    <p class="mb-4 text-gray-600">HPP的纵向数据揭示了同一位个体在不同时间点（2-5年间隔）的测量结果具有显著稳定性，匹配样本的相关性高于不匹配样本，这有助于区分生理性个体内部变异与外部或病理变化。</p>
+                    <div class="info-box">
+                        <p class="text-sm text-gray-700"><strong>各模态相关性示例 (匹配 vs. 不匹配样本):</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>PhIP-seq (5年随访): 匹配对 vs 不匹配对 (各213对)</li>
+                            <li>睡眠 (2年随访): 匹配对 vs 不匹配对 (各542对)</li>
+                            <li>微生物组 (2年和4年随访): 匹配对 vs 不匹配对 (各1,000对)</li>
+                            <li>代谢组学 (2年和4年随访): 匹配对 vs 不匹配对 (各781对)</li>
+                        </ul>
+                        <p class="text-sm text-gray-700 mt-2">所有模态均显示匹配样本具有更高的相关性，证明了纵向数据的价值。</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">微生物菌株共享分析</h3>
+                    <p class="mb-4 text-gray-600">通过分析微生物组样本，我们发现个体内部微生物组组成变异性显著低于群体之间 (P < 0.001)。</p>
+                    <div class="info-box">
+                        <p class="text-sm text-gray-700"><strong>菌株共享百分比:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>无关个体: 5.2% ± 5.2%</li>
+                            <li>兄弟姐妹: 8.0% ± 6.7%</li>
+                            <li>伴侣: 28.0% ± 16.6%</li>
+                            <li>同一个体的纵向样本: 87.0% ± 14.4%</li>
+                        </ul>
+                        <p class="text-sm text-gray-700 mt-2">这表明同一人随时间推移存在极高程度的菌株水平重叠，且同一家庭成员之间微生物组组成存在相似性 (P < 0.001)。</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="microbiome" class="content-section">
+            <h2 class="text-3xl font-bold mb-2">微生物组与疾病：寻找特异性标记</h2>
+            <p class="text-lg text-gray-600 mb-8">利用庞大的健康队列作为对照，HPP能够精确识别与特定疾病相关的微生物组特征，为疾病诊断和治疗提供了新思路。</p>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4 text-center">疾病特异性微生物组特征</h3>
+                <div class="flex justify-center mb-6">
+                    <select id="disease-selector" class="p-2 border rounded-lg bg-gray-50">
+                        <option value="bc">乳腺癌 (BC)</option>
+                        <option value="ibd">炎症性肠病 (IBD)</option>
+                        <option value="endometriosis">子宫内膜异位症</option>
+                    </select>
+                </div>
+                <div class="chart-container mx-auto">
+                    <canvas id="microbiomeChart"></canvas>
+                </div>
+                 <p class="text-center text-sm text-gray-500 mt-4" id="microbiome-context">选择一种疾病，查看其患者群体与健康对照组在关键细菌相对丰度上的差异。</p>
+                <div class="info-box mt-4" id="microbiome-detail-box">
+                    <!-- Details will be dynamically loaded here -->
+                </div>
+                <div class="info-box mt-4">
+                    <p class="text-sm text-gray-700"><strong>分析局限性:</strong></p>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <li>缺乏既定基线指标进行比较。</li>
+                        <li>模型在同一队列交叉验证中表现良好，但对完全独立数据集的普适性仍需验证。</li>
+                        <li>需考虑疾病队列中个体所服用药物的潜在影响。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="lifestyle" class="content-section">
+            <h2 class="text-3xl font-bold mb-2">生活方式的影响：健康的主动权</h2>
+            <p class="text-lg text-gray-600 mb-8">HPP的纵向数据清晰地揭示了饮食和运动对健康的深远影响。选择健康的生活方式是掌握自身健康主动权的关键。</p>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h3 class="text-xl font-bold mb-4 text-center">不同饮食模式与健康结果的关联</h3>
+                <p class="text-sm text-gray-600 mb-4">研究期间，参与者平均碳水化合物、脂肪和蛋白质摄入量分别为总能量的 39.7% ± 8.2%, 37.8% ± 6.7% 和 18.4% ± 4.2%。</p>
+                <div class="flex justify-center space-x-2 mb-6">
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium" data-diet="upf">超加工食品 (UPF)</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium" data-diet="healthy">健康饮食</button>
+                    <button class="interactive-btn px-4 py-2 bg-gray-200 rounded-full text-sm font-medium" data-diet="reset">重置</button>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="health-outcomes-grid">
+                </div>
+                <div class="info-box mt-4" id="diet-detail-box">
+                    <p class="text-sm text-gray-700">点击上方按钮查看不同饮食模式对健康结果的具体影响。</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-bold mb-4">饮食转变的纵向影响</h3>
+                <p class="mb-4 text-gray-600">基线时更好地遵守地中海饮食和更高的运动评分与较低的代谢状况发展风险相关 (HR 0.85; 95% CI, 0.75–0.97)，而年龄越大则与更高的HR相关 (1.38; 95% CI, 1.22–1.54)，平均随访时间为2.1±1.1年。</p>
+                <div class="info-box">
+                    <p class="text-sm text-gray-700"><strong>关键发现:</strong></p>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <li>两年内饮食转向更多UPF摄入与不良健康结果相关，包括身体成分变化 (BMI、腰围、DXA测量的脂肪量增加)、收缩压升高和炎症标志物 (如白细胞计数) 增加。</li>
+                        <li>相反，转向地中海、原始人、素食或纯素食则与改善的健康结果相关。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="ai" class="content-section">
+            <h2 class="text-3xl font-bold mb-2">AI与未来展望：个性化数字孪生</h2>
+            <p class="text-lg text-gray-600 mb-8">HPP的最终愿景是利用其丰富的数据，开发能够整合所有患者模态的AI基础模型，构建“个性化数字孪生”，以动态、预测性的视角来管理健康。</p>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">AI基础模型</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-semibold text-lg text-[#81B29A]">COMPRER 模型</h4>
+                            <p class="text-gray-600 text-sm">一个深度学习框架，利用Vision Transformers (ViTs) 和DINOV2预训练权重，整合眼底成像和颈动脉超声，增强医学图像表示。模型使用多目标训练（包括跨模态对比损失、时间对比学习、双侧眼底耦合和重建目标），在心血管疾病预测中AUC达到0.71，优于现有基于视网膜成像的基础模型 (RETFound)。</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-lg text-[#F2CC8F]">GluFormer 模型</h4>
+                            <p class="text-gray-600 text-sm">基于Transformer架构（16个注意力头，16层，1024维嵌入空间），利用10,812名无糖尿病个体的CGM数据进行自监督学习（专注于下一个标记预测）。能生成真实的CGM时间序列，并显著将糖尿病前期人群分层为进展或稳定（P < 0.001），展现出在糖尿病风险管理中的临床实用性。</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-bold mb-4">“个性化数字孪生”概念</h3>
+                    <p class="mb-4 text-gray-600">该模型旨在将所有医疗数据视为连续的医疗事件序列（类似于自然语言处理中的标记），通过预测“下一个医疗事件”来提供患者健康的动态和预测性视图。</p>
+                    <div class="space-y-2 text-center font-mono text-sm">
+                        <div class="p-3 bg-gray-100 rounded-lg">多维数据输入</div>
+                        <div class="text-gray-400">↓</div>
+                        <div class="p-3 bg-blue-100 rounded-lg">AI基础模型 (SSL)</div>
+                        <div class="text-gray-400">↓</div>
+                        <div class="p-3 bg-green-100 rounded-lg">预测下一个医疗事件</div>
+                        <div class="text-gray-400">↓</div>
+                        <div class="p-3 bg-purple-100 rounded-lg">模拟治疗干预 & 预测健康轨迹</div>
+                    </div>
+                    <p class="text-sm text-gray-600 mt-4">最终目标是帮助理解和预测健康轨迹，并通过模拟治疗和生活方式改变来预测其对患者健康的影响。</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const contentSections = document.querySelectorAll('.content-section');
+
+            function showSection(hash) {
+                const targetHash = hash || '#overview';
+                
+                navLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href') === targetHash);
+                });
+
+                contentSections.forEach(section => {
+                    section.classList.toggle('active', '#' + section.id === targetHash);
+                });
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetHash = this.getAttribute('href');
+                    history.pushState(null, null, targetHash);
+                    showSection(targetHash);
+                });
+            });
+
+            window.addEventListener('popstate', () => {
+                showSection(window.location.hash);
+            });
+
+            showSection(window.location.hash);
+
+            function animateValue(obj, start, end, duration) {
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    obj.innerHTML = Math.floor(progress * (end - start) + start).toLocaleString();
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    }
+                };
+                window.requestAnimationFrame(step);
+            }
+
+            const participantsStat = document.getElementById('participants-stat');
+            const visitsStat = document.getElementById('visits-stat');
+            const followupStat = document.getElementById('followup-stat');
+            const mealsLoggedStat = document.getElementById('meals-logged-stat');
+            
+            animateValue(participantsStat, 0, 27916, 2000); // Updated to 27,916
+            animateValue(visitsStat, 0, 13072, 2000); // Updated to 13,072
+            animateValue(followupStat, 0, 25, 2000);
+            animateValue(mealsLoggedStat, 0, 3030837, 2000); // Added meals logged stat
+
+            let ethnicityChart, menopauseChart, microbiomeChart;
+
+            const ethnicityData = {
+                genetics: { labels: ['遗传学'], data: [0.92] },
+                lifestyle: { labels: ['生活方式'], data: [0.75] },
+                metabolomics: { labels: ['代谢组学'], data: [0.78] },
+                microbiome: { labels: ['微生物组'], data: [0.55] } // Random predictive power
+            };
+
+            function createEthnicityChart(modality) {
+                const ctx = document.getElementById('ethnicityChart').getContext('2d');
+                if (ethnicityChart) {
+                    ethnicityChart.destroy();
+                }
+                ethnicityChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ethnicityData[modality].labels,
+                        datasets: [{
+                            label: 'AUC值',
+                            data: ethnicityData[modality].data,
+                            backgroundColor: ['#81B29A'],
+                            borderColor: ['#6a947d'],
+                            borderWidth: 1,
+                            borderRadius: 5,
+                            barPercentage: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `AUC: ${context.raw.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1.0,
+                                title: { display: true, text: '预测准确度 (AUC)' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            const ethnicityBtns = document.querySelectorAll('[data-modality]');
+            ethnicityBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    ethnicityBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    createEthnicityChart(this.dataset.modality);
+                });
+            });
+            ethnicityBtns[0].click();
+
+            function createMenopauseChart() {
+                const ctx = document.getElementById('menopauseChart').getContext('2d');
+                menopauseChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: ['-10', '-5', '绝经', '+5', '+10', '+15'],
+                        datasets: [{
+                            label: '骨密度 vs 距绝经时间 (ρ = -0.24)',
+                            data: [1.2, 1.15, 1.1, 1.0, 0.9, 0.8], // Illustrative data showing steeper decline
+                            borderColor: '#E07A5F',
+                            backgroundColor: 'rgba(224, 122, 95, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }, {
+                            label: '骨密度 vs 实际年龄 (ρ = -0.19)',
+                            data: [1.2, 1.18, 1.15, 1.12, 1.08, 1.05], // Illustrative data showing less steep decline
+                            borderColor: '#3D405B',
+                            backgroundColor: 'rgba(61, 64, 91, 0.1)',
+                            fill: false,
+                            tension: 0.1,
+                            borderDash: [5, 5]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { title: { display: true, text: '骨密度 (相对值)' } },
+                            x: { title: { display: true, text: '年 (相对于绝经/实际年龄)' } }
+                        }
+                    }
+                });
+            }
+            createMenopauseChart();
+
+            const microbiomeData = {
+                bc: {
+                    labels: ['粪杆菌属', '梭链细菌属'],
+                    datasets: [
+                        { label: '乳腺癌患者', data: [3.7, 0.6], backgroundColor: '#E07A5F' },
+                        { label: '健康对照', data: [4.5, 0.4], backgroundColor: '#81B29A' }
+                    ],
+                    details: `
+                        <p class="text-sm text-gray-700"><strong>乳腺癌 (BC) 微生物组特征:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>粪杆菌属 (Faecalibacterium): BC患者平均相对丰度 0.037 vs HC 0.045 (P < 0.001)，可能在BC病理生理学中发挥作用。</li>
+                            <li>梭链细菌属 (Fusicatenibacter): BC患者平均相对丰度 0.006 vs HC 0.004 (P < 0.001)。</li>
+                            <li>微生物组多样性: 健康对照组显著更高 (5.5 vs BC 5.29, P < 0.001)。</li>
+                            <li>匹配队列: 219名BC患者 vs 1,075名按年龄和BMI匹配的健康对照女性。</li>
+                        </ul>
+                    `
+                },
+                ibd: {
+                    labels: ['瘤胃球菌属', '大肠杆菌'],
+                    datasets: [
+                        { label: 'IBD患者', data: [2.0, 1.0], backgroundColor: '#E07A5F' },
+                        { label: '健康对照', data: [0.01, 0.1], backgroundColor: '#81B29A' }
+                    ],
+                    details: `
+                        <p class="text-sm text-gray-700"><strong>炎症性肠病 (IBD) 微生物组特征:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>瘤胃球菌属 (Ruminococcus gnavus): IBD患者平均相对丰度 0.02 vs HC 0.0001 (P < 0.001)。</li>
+                            <li>大肠杆菌 (Escherichia coli): IBD患者平均相对丰度 0.01 vs HC 0.001 (P < 0.001)。</li>
+                            <li>匹配队列: 182名IBD患者 vs 2,548名按年龄和性别匹配的健康对照。</li>
+                        </ul>
+                    `
+                },
+                endometriosis: {
+                    labels: ['黄酮分解杆菌属', '颤杆菌属'],
+                    datasets: [
+                        { label: '子宫内膜异位症患者', data: [0.1, 0.06], backgroundColor: '#E07A5F' },
+                        { label: '健康对照', data: [0.04, 2.0], backgroundColor: '#81B29A' }
+                    ],
+                    details: `
+                        <p class="text-sm text-gray-700"><strong>子宫内膜异位症微生物组特征:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>黄酮分解杆菌属 (Flavonifractor): 患者平均相对丰度 0.001 vs HC 0.0004 (P < 0.0001)，与炎症过程相关。</li>
+                            <li>颤杆菌属 (Oscillibacter): 患者平均相对丰度 0.0006 vs HC 0.02 (P < 0.0001)，与代谢途径相关，可能反映全身效应。</li>
+                            <li>匹配队列: 110名患者 vs 220名按年龄和BMI匹配的健康对照女性。</li>
+                        </ul>
+                    `
+                }
+            };
+            
+            const microbiomeDetailBox = document.getElementById('microbiome-detail-box');
+            function createMicrobiomeChart(disease) {
+                const ctx = document.getElementById('microbiomeChart').getContext('2d');
+                if (microbiomeChart) {
+                    microbiomeChart.destroy();
+                }
+                microbiomeChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: microbiomeData[disease],
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.dataset.label}: ${context.raw.toFixed(2)}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { title: { display: true, text: '相对丰度 (%)' } }
+                        }
+                    }
+                });
+                microbiomeDetailBox.innerHTML = microbiomeData[disease].details;
+            }
+            
+            document.getElementById('disease-selector').addEventListener('change', function() {
+                createMicrobiomeChart(this.value);
+            });
+            createMicrobiomeChart('bc');
+
+            const healthOutcomesData = {
+                upf: [
+                    { name: '人体测量指标', positive: false, detail: 'BMI、腰围、脂肪量增加' },
+                    { name: '血压', positive: false, detail: '收缩压升高' },
+                    { name: '血糖', positive: false, detail: '血糖水平升高' },
+                    { name: '血脂', positive: false, detail: '血脂水平改变 (如甘油三酯升高)' },
+                    { name: '肝脏指标', positive: false, detail: '肝脏相关参数改变' },
+                    { name: '打鼾', positive: false, detail: '打鼾增加' },
+                    { name: '微生物多样性', positive: true, detail: '肠道微生物组阿尔法多样性降低 (Pearson r = -0.09, P < 0.001)' },
+                    { name: '代谢综合征风险', positive: false, detail: '主要风险因素之一' }
+                ],
+                healthy: [
+                    { name: '代谢健康', positive: true, detail: '良好代谢健康指标' },
+                    { name: '高密度脂蛋白胆固醇', positive: true, detail: '水平呈正相关' },
+                    { name: 'BMI', positive: false, detail: '呈负相关' },
+                    { name: '腰围', positive: false, detail: '呈负相关' },
+                    { name: '甘油三酯', positive: false, detail: '呈负相关' },
+                    { name: '内脏/肝脏脂肪', positive: false, detail: '呈负相关 (DXA扫描)' },
+                    { name: '微生物多样性', positive: true, detail: '适度增加 (Pearson r: 地中海 0.06, 原始人 0.09, 素食 0.03; P < 0.05)' }
+                ]
+            };
+
+            const grid = document.getElementById('health-outcomes-grid');
+            const dietDetailBox = document.getElementById('diet-detail-box');
+
+            function updateHealthOutcomesGrid(dietType) {
+                grid.innerHTML = ''; // Clear existing cards
+                let outcomesToShow = [];
+                let detailText = '';
+
+                if (dietType === 'upf') {
+                    outcomesToShow = healthOutcomesData.upf;
+                    detailText = `
+                        <p class="text-sm text-gray-700"><strong>超加工食品 (UPF) 摄入与多项不利健康结果显著相关:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>人体测量指标增加 (BMI、腰围、脂肪量)。</li>
+                            <li>血压升高 (收缩压升高)。</li>
+                            <li>血糖水平升高、血脂水平改变 (如甘油三酯升高)。</li>
+                            <li>肝脏相关参数改变、打鼾增加。</li>
+                            <li>肠道微生物组阿尔法多样性降低 (Pearson r = -0.09, P < 0.001)。</li>
+                        </ul>
+                    `;
+                } else if (dietType === 'healthy') {
+                    outcomesToShow = healthOutcomesData.healthy;
+                    detailText = `
+                        <p class="text-sm text-gray-700"><strong>地中海、原始人、素食和纯素食等健康饮食与有利健康结果相关:</strong></p>
+                        <ul class="list-disc list-inside text-sm text-gray-700">
+                            <li>良好代谢健康指标，与高密度脂蛋白胆固醇水平呈正相关。</li>
+                            <li>与BMI、腰围、甘油三酯水平及内脏/肝脏脂肪百分比呈负相关。</li>
+                            <li>微生物多样性适度增加 (Pearson r: 地中海 0.06, 原始人 0.09, 素食 0.03; P < 0.05)。</li>
+                        </ul>
+                    `;
+                } else { // Reset
+                    healthOutcomesData.upf.forEach(outcome => {
+                        const card = document.createElement('div');
+                        card.className = 'health-outcome-card p-4 rounded-lg text-center';
+                        card.innerHTML = `<p class="font-medium">${outcome.name}</p>`;
+                        grid.appendChild(card);
+                    });
+                    detailText = '<p class="text-sm text-gray-700">点击上方按钮查看不同饮食模式对健康结果的具体影响。</p>';
+                }
+
+                if (dietType !== 'reset') {
+                    outcomesToShow.forEach(outcome => {
+                        const card = document.createElement('div');
+                        card.className = `health-outcome-card p-4 rounded-lg text-center ${outcome.positive ? 'positive' : 'negative'}`;
+                        card.innerHTML = `<p class="font-medium">${outcome.name}</p><p class="text-xs text-gray-500 mt-1">${outcome.detail}</p>`;
+                        grid.appendChild(card);
+                    });
+                }
+                dietDetailBox.innerHTML = detailText;
+            }
+
+            const dietBtns = document.querySelectorAll('[data-diet]');
+            dietBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    dietBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updateHealthOutcomesGrid(this.dataset.diet);
+                });
+            });
+            updateHealthOutcomesGrid('reset'); // Initialize grid
+        });
+    </script>
+</body>
+</html>
